@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-label="PRs extension terminal UI screenshot">
+  <rect width="1200" height="740" rx="18" fill="#0f1117"/>
+  <rect x="24" y="24" width="1152" height="692" rx="14" fill="#151922" stroke="#31394d"/>
+  <circle cx="52" cy="50" r="7" fill="#ff5f57"/>
+  <circle cx="76" cy="50" r="7" fill="#ffbd2e"/>
+  <circle cx="100" cy="50" r="7" fill="#28c840"/>
+  <text x="600" y="55" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">pi /prs</text>
+
+  <rect x="58" y="82" width="1084" height="596" rx="10" fill="#0b0e14" stroke="#7c5cff" stroke-width="2"/>
+  <text x="82" y="120" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="20" font-weight="700" fill="#b69cff">╭ Pull Requests ───────────────────────────────────────────────────────────────────────╮</text>
+  <text x="96" y="158" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">Repository: curtisblanchette/pi-extensions</text>
+  <text x="96" y="188" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">↑↓ navigate • Enter disclose/select • Tab switch • r refresh • Esc back/cancel</text>
+  <line x1="96" y1="218" x2="1104" y2="218" stroke="#31394d"/>
+
+  <text x="96" y="256" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17" font-weight="700" fill="#8b95aa">Open + draft PRs (4)</text>
+  <text x="116" y="292" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#b69cff">› #42 DRAFT actions pending Update PR browser workflow</text>
+  <text x="116" y="322" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">     feat/pr-browser → main • @curtisblanchette</text>
+  <text x="116" y="352" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">  #41 OPEN  actions passing Add pi package manifest</text>
+  <text x="116" y="382" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">     package/git-install → main • @curtisblanchette</text>
+  <text x="116" y="412" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">  #40 OPEN  actions failing Harden label synchronization</text>
+  <text x="116" y="442" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">     labels/safety → main • @curtisblanchette</text>
+
+  <line x1="570" y1="250" x2="570" y2="522" stroke="#31394d"/>
+  <text x="596" y="292" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17" font-weight="700" fill="#b69cff">#42 Update PR browser workflow</text>
+  <text x="596" y="326" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">State:</text>
+  <text x="670" y="326" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ffbd2e">Draft</text>
+  <text x="596" y="356" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">Actions:</text>
+  <text x="690" y="356" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ffbd2e">actions pending</text>
+  <text x="596" y="386" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">Branch:</text>
+  <text x="680" y="386" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">feat/pr-browser → main</text>
+  <text x="596" y="416" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">Author:</text>
+  <text x="680" y="416" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">@curtisblanchette</text>
+  <text x="596" y="446" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">URL:</text>
+  <text x="650" y="446" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">github.com/curtisblanchette/pi-extensions/pull/42</text>
+
+  <line x1="96" y1="540" x2="1104" y2="540" stroke="#31394d"/>
+  <text x="96" y="578" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17" font-weight="700" fill="#b69cff">› Actions for #42</text>
+  <text x="116" y="612" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#b69cff">› 1. Checkout PR branch locally</text>
+  <text x="150" y="640" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="14" fill="#8b95aa">Fetch and switch your working tree to the selected PR branch.</text>
+  <text x="116" y="668" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">  2. Update PR description     3. Set draft ready for review     4. Agentic review</text>
+</svg>

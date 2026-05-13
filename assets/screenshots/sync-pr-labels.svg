@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-label="Sync PR labels extension terminal notification screenshot">
+  <rect width="1200" height="740" rx="18" fill="#0f1117"/>
+  <rect x="24" y="24" width="1152" height="692" rx="14" fill="#151922" stroke="#31394d"/>
+  <circle cx="52" cy="50" r="7" fill="#ff5f57"/>
+  <circle cx="76" cy="50" r="7" fill="#ffbd2e"/>
+  <circle cx="100" cy="50" r="7" fill="#28c840"/>
+  <text x="600" y="55" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">pi /sync-pr-labels</text>
+
+  <rect x="86" y="92" width="1028" height="552" rx="12" fill="#0b0e14" stroke="#7c5cff" stroke-width="2"/>
+  <text x="118" y="135" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="18" font-weight="700" fill="#b69cff">Repository: curtisblanchette/pi-extensions</text>
+  <text x="118" y="185" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#d7dce8">This will delete labels not in the approved PR workflow set:</text>
+  <text x="144" y="220" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ff6b7a">- stale triage</text>
+  <text x="144" y="250" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ff6b7a">- old ready label</text>
+
+  <text x="118" y="306" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#d7dce8">It will create/update these labels with source-of-truth colors:</text>
+  <text x="144" y="342" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#c2e0c6">- ‼️ Merge with comments #c2e0c6 — Approved, but comments must be addressed.</text>
+  <text x="144" y="372" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#2bd576">- ✅ Ready to merge #0e8a16 — Approved and ready for the author to merge.</text>
+  <text x="144" y="402" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#4ea1ff">- 👀 Ready for review #1d76db — Ready for review.</text>
+  <text x="144" y="432" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#b69cff">- 😭 Changes requested #5319e7 — Updates are required.</text>
+  <text x="144" y="462" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#f9d0c4">- 🚫 Do not merge #f9d0c4 — PR must not be merged.</text>
+  <text x="144" y="492" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ffbd2e">- 🛠️ Work in progress #fbca04 — PR is under construction.</text>
+  <text x="144" y="522" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#c18457">- 🧱 Blocked #471d11 — Blocking work must be completed.</text>
+
+  <rect x="118" y="565" width="450" height="44" rx="8" fill="#151922" stroke="#31394d"/>
+  <text x="140" y="594" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">Run </text>
+  <text x="190" y="594" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#b69cff">/sync-pr-labels --yes</text>
+  <text x="400" y="594" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa"> to apply.</text>
+</svg>

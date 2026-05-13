@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="740" viewBox="0 0 1200 740" role="img" aria-label="Commit PR extension terminal UI screenshot">
+  <rect width="1200" height="740" rx="18" fill="#0f1117"/>
+  <rect x="24" y="24" width="1152" height="692" rx="14" fill="#151922" stroke="#31394d"/>
+  <circle cx="52" cy="50" r="7" fill="#ff5f57"/>
+  <circle cx="76" cy="50" r="7" fill="#ffbd2e"/>
+  <circle cx="100" cy="50" r="7" fill="#28c840"/>
+  <text x="600" y="55" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">pi /commit</text>
+
+  <rect x="58" y="82" width="1084" height="596" rx="10" fill="#0b0e14" stroke="#7c5cff" stroke-width="2"/>
+  <text x="82" y="120" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="20" font-weight="700" fill="#b69cff">╭ Commit, Push, and Draft PR ─────────────────────────────────────────────────────────╮</text>
+  <text x="96" y="158" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">Tab/Shift+Tab moves focus • Enter on action submits • Esc cancels</text>
+
+  <text x="96" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17" font-weight="700" fill="#b69cff">› Branch</text>
+  <text x="116" y="235" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#8b95aa">Current: </text>
+  <text x="204" y="235" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#b69cff">main</text>
+  <text x="116" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#b69cff">› Push target: </text>
+  <text x="268" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#545d70">○ current</text>
+  <text x="384" y="265" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#2bd576">● new branch</text>
+  <text x="116" y="295" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#b69cff">› Branch name: feat/docs-highlight-pi-extensions</text>
+
+  <line x1="96" y1="325" x2="1104" y2="325" stroke="#31394d"/>
+  <text x="96" y="363" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="17" font-weight="700" fill="#b69cff">› Changed files (3/3 selected)</text>
+
+  <text x="116" y="399" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">Files</text>
+  <text x="458" y="399" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#8b95aa">│ Diff: README.md</text>
+  <line x1="116" y1="416" x2="424" y2="416" stroke="#31394d"/>
+  <line x1="450" y1="416" x2="1078" y2="416" stroke="#31394d"/>
+
+  <text x="116" y="450" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#b69cff">› [x] M  README.md</text>
+  <text x="458" y="450" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#b69cff">@@ -1,7 +1,36 @@</text>
+  <text x="116" y="480" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">  [x] A  assets/screenshots/commit-pr.svg</text>
+  <text x="458" y="480" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#ff6b7a">-## Included extensions</text>
+  <text x="116" y="510" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#d7dce8">  [x] A  assets/screenshots/prs.svg</text>
+  <text x="458" y="510" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#2bd576">+## Extension highlights</text>
+  <text x="458" y="540" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#2bd576">+### /commit and /commit-pr</text>
+  <text x="458" y="570" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="15" fill="#2bd576">+Stage files, review diffs, commit, push, and open a draft PR.</text>
+
+  <text x="96" y="612" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" font-weight="700" fill="#8b95aa">Commit message</text>
+  <text x="116" y="642" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#d7dce8">docs(readme): highlight extension use cases</text>
+  <text x="96" y="670" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="16" fill="#b69cff">› [ Commit 3 files, push, create draft PR ]</text>
+</svg>
