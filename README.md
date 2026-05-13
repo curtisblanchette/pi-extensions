@@ -1,4 +1,14 @@
-# pi-extensions
+<p align="center">
+  <a href="https://pi.dev">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://pi.dev/logo.svg">
+      <source media="(prefers-color-scheme: light)" srcset="https://huggingface.co/buckets/julien-c/my-training-bucket/resolve/pi-logo-dark.svg">
+      <img alt="pi logo" src="https://pi.dev/logo.svg" width="128">
+    </picture>
+  </a>
+</p>
+
+<h1 align="center">pi-extensions</h1>
 
 Curtis Blanchette's personal [pi](https://github.com/earendil-works/pi) extensions, packaged so users can install them directly from GitHub without cloning this repository into their own pi setup.
 
