@@ -25,6 +25,11 @@ export interface AgenticReviewConfig {
 			anthropic?: string;
 			openai?: string;
 		};
+		ollama: {
+			baseUrl: string;
+			apiKey: string;
+			contextWindow: number;
+		};
 		llamaServer: {
 			baseUrl: string;
 			apiKey: string;
@@ -84,6 +89,11 @@ const DEFAULT_CONFIG: AgenticReviewConfig = {
 		temperature: 0.1,
 		maxTokens: 8_192,
 		apiKeys: {},
+		ollama: {
+			baseUrl: "http://127.0.0.1:11434/v1",
+			apiKey: "ollama",
+			contextWindow: 262_144,
+		},
 		llamaServer: {
 			baseUrl: "http://127.0.0.1:8080/v1",
 			apiKey: "local",
@@ -143,7 +153,7 @@ export function parseModelSpec(value: string): { provider: Provider; id: string 
 	const provider = normalizeProvider(rawProvider);
 	const id = idParts.join("/").trim();
 	if (!provider || !id) {
-		throw new Error("Model must use provider/model format: anthropic/<id>, openai/<id>, or llama.server/<id>");
+		throw new Error("Model must use provider/model format: anthropic/<id>, openai/<id>, ollama/<id>, or llama.server/<id>");
 	}
 	return { provider, id };
 }
@@ -156,6 +166,10 @@ export function redactConfig(config: AgenticReviewConfig): unknown {
 			apiKeys: {
 				anthropic: config.model.apiKeys.anthropic ? "[configured]" : "[not configured]",
 				openai: config.model.apiKeys.openai ? "[configured]" : "[not configured]",
+			},
+			ollama: {
+				...config.model.ollama,
+				apiKey: config.model.ollama.apiKey ? "[configured]" : "[not configured]",
 			},
 			llamaServer: {
 				...config.model.llamaServer,
@@ -228,6 +242,11 @@ function envOverrides(): unknown {
 			id: parsedModel?.id ?? modelId,
 			temperature: parseNumber(process.env.AGENTIC_REVIEW_TEMPERATURE),
 			maxTokens: parseNumber(process.env.AGENTIC_REVIEW_MAX_TOKENS),
+			ollama: compactObject({
+				baseUrl: (process.env.OLLAMA_BASE_URL ?? process.env.OLLAMA_URL)?.trim(),
+				apiKey: process.env.OLLAMA_API_KEY?.trim(),
+				contextWindow: parseNumber(process.env.OLLAMA_CONTEXT_WINDOW),
+			}),
 			llamaServer: compactObject({
 				baseUrl: process.env.LLAMA_SERVER_URL?.trim(),
 				apiKey: process.env.LLAMA_SERVER_API_KEY?.trim(),
@@ -260,7 +279,7 @@ function normalizeProvider(value: unknown): Provider | undefined {
 		.toLowerCase()
 		.trim()
 		.replace(/[._]/g, "-");
-	if (normalized === "anthropic" || normalized === "openai") return normalized;
+	if (normalized === "anthropic" || normalized === "openai" || normalized === "ollama") return normalized;
 	if (normalized === "llama-server" || normalized === "llamaserver" || normalized === "llama") return "llama-server";
 	return undefined;
 }

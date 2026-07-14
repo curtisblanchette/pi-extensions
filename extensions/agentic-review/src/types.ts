@@ -2,7 +2,7 @@
  * Shared types for the agentic-review LangGraph workflow.
  */
 
-export type Provider = "anthropic" | "openai" | "llama-server";
+export type Provider = "anthropic" | "openai" | "ollama" | "llama-server";
 
 /** Finding severity produced by the quality gate. */
 export type Severity = "critical" | "bug" | "nice-to-have" | "nit";

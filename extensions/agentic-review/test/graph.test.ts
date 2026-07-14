@@ -29,6 +29,7 @@ const config: AgenticReviewConfig = {
 		temperature: 0,
 		maxTokens: 4_000,
 		apiKeys: {},
+		ollama: { baseUrl: "http://localhost:11434/v1", apiKey: "ollama", contextWindow: 262_144 },
 		llamaServer: { baseUrl: "http://localhost:8080/v1", apiKey: "local", contextWindow: 32_768 },
 	},
 	review: { maxDiffCharsPerChunk: 60_000, maxChunks: 20, postInlineComments: true },

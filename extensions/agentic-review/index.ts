@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { loadConfig, parseModelSpec, redactConfig, withModelOverride, type AgenticReviewConfig } from "./src/config.ts";
 import { getActiveRepo, GitHubClient } from "./src/github.ts";
-import { ensureLlamaServerProvider, resolveReviewModel } from "./src/model.ts";
+import { ensureLlamaServerProvider, ensureOllamaProvider, resolveReviewModel } from "./src/model.ts";
 import { runReviewWorkflow } from "./src/workflow.ts";
 import type { WorkflowResult } from "./src/types.ts";
 import { WorkflowDashboard } from "./src/dashboard.ts";
@@ -51,6 +51,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			},
 		};
 		if (overrides.dryRun !== undefined) config = { ...config, dryRun: overrides.dryRun };
+		if (config.model.provider === "ollama") ensureOllamaProvider(pi, config);
 		if (config.model.provider === "llama-server") ensureLlamaServerProvider(pi, config);
 		dashboard.setMaxRuns(config.webUi.maxRuns);
 		return config;

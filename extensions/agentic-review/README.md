@@ -53,6 +53,7 @@ A model cannot downgrade a normal-path bug to deferred: the code forces every no
 /agentic-review-ui                 # alias for /agentic-review-server
 
 /agentic-review-model              # show resolved model
+/agentic-review-model ollama/qwen3.6:latest
 /agentic-review-model anthropic/claude-sonnet-4-5
 /agentic-review-model openai/gpt-5
 /agentic-review-model llama.server/qwen3-coder
@@ -141,6 +142,8 @@ The file is mode `0600`. The GitHub token is read from `gh auth token` at runtim
 
 Settings provides password inputs for Anthropic and OpenAI. Saved keys override pi's normal provider credential resolution for this review workflow only. The page receives only `configured`/`not configured` status.
 
+Local Ollama models do not need a Settings key. Keep Ollama running locally and target the `ollama/<model>` provider in config or with `/agentic-review-model`.
+
 Keys are stored at:
 
 ```text
@@ -171,6 +174,8 @@ or set `polling.enabled` to `true` in config. The core `runReviewWorkflow()` is 
 
 The extension records successful reviews by repository, PR number, and head SHA in `.pi/agentic-review-state.json`. A new commit is reviewable; the same commit is skipped unless `--force` is used. This also prevents duplicate reviews while repository auto-labelling catches up. Before posting, the graph fetches the PR again and refuses to post a stale review if the head changed during processing.
 
+If an agentic review has already been submitted, re-applying `👀 Ready for review` is not enough to trigger another posted review. Before spending model time or writing to GitHub, the workflow checks GitHub itself: it skips when the latest agentic review is already on the current head SHA, and it also skips while any previous review conversation is still unresolved. Resolve the review comments first, then push a new commit or rerun with `--force` if you intentionally want another review.
+
 ## Configuration
 
 Configuration is merged in this order:
@@ -196,14 +201,14 @@ Example project config:
     "maxRuns": 100
   },
   "model": {
-    "provider": "anthropic",
-    "id": "claude-sonnet-4-5",
+    "provider": "ollama",
+    "id": "qwen3.6:latest",
     "temperature": 0.1,
     "maxTokens": 8192,
-    "llamaServer": {
-      "baseUrl": "http://127.0.0.1:8080/v1",
-      "apiKey": "local",
-      "contextWindow": 32768
+    "ollama": {
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama",
+      "contextWindow": 262144
     }
   },
   "review": {
@@ -227,6 +232,52 @@ Example project config:
 ```
 
 Omit `model.provider` and `model.id` to use the model currently selected in pi.
+
+### Ollama local model
+
+Install Ollama and pull the local review model:
+
+```bash
+brew install ollama
+ollama pull qwen3.6
+```
+
+If the Ollama app is not already running, start the API server:
+
+```bash
+ollama serve
+```
+
+Verify the OpenAI-compatible endpoint sees the model:
+
+```bash
+curl http://127.0.0.1:11434/v1/models
+```
+
+Persistently target the local Qwen 3.6 model with `~/.pi/agent/agentic-review.json` or `<repo>/.pi/agentic-review.json`:
+
+```json
+{
+  "model": {
+    "provider": "ollama",
+    "id": "qwen3.6:latest",
+    "maxTokens": 8192,
+    "ollama": {
+      "baseUrl": "http://127.0.0.1:11434/v1",
+      "apiKey": "ollama",
+      "contextWindow": 262144
+    }
+  }
+}
+```
+
+For a session-only switch, run:
+
+```text
+/agentic-review-model ollama/qwen3.6:latest
+```
+
+`ollama` is registered as an OpenAI-compatible local provider by the extension. The `apiKey` is a placeholder because Ollama ignores it.
 
 ### Anthropic
 
@@ -256,9 +307,9 @@ Authentication comes from the review-specific Settings key, then pi (`~/.pi/agen
 
 Authentication comes from the review-specific Settings key, then pi or `OPENAI_API_KEY`.
 
-### llama.server
+### Other OpenAI-compatible local servers
 
-The extension registers `llama-server` as an OpenAI-compatible pi provider:
+For llama.cpp `llama-server`, LM Studio, vLLM, or another OpenAI-compatible local runtime, use the `llama-server` provider and point it at that server:
 
 ```json
 {
@@ -315,6 +366,9 @@ If a bug is marked deferred but Linear is disabled, unconfigured, ambiguous, or 
 | `AGENTIC_REVIEW_PROVIDER` / `AGENTIC_REVIEW_MODEL_ID` | Separate model selector |
 | `AGENTIC_REVIEW_TEMPERATURE` | Model temperature |
 | `AGENTIC_REVIEW_MAX_TOKENS` | Completion limit |
+| `OLLAMA_BASE_URL` / `OLLAMA_URL` | Ollama OpenAI-compatible base URL |
+| `OLLAMA_API_KEY` | Optional Ollama placeholder key |
+| `OLLAMA_CONTEXT_WINDOW` | Registered Ollama model context size |
 | `AGENTIC_REVIEW_DIFF_CHUNK_CHARS` | Maximum characters per review pass |
 | `AGENTIC_REVIEW_MAX_DIFF_CHUNKS` | Fail-closed chunk limit |
 | `AGENTIC_REVIEW_POST_INLINE_COMMENTS` | Enable inline suggestion comments |

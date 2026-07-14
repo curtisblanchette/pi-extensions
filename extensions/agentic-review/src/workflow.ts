@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import type { AgenticReviewConfig } from "./config.ts";
 import { createAgenticReviewGraph } from "./graph.ts";
-import { getActiveRepo, GitHubClient } from "./github.ts";
+import { getActiveRepo, GitHubClient, type PreviousAgenticReviewStatus } from "./github.ts";
 import { LinearClient } from "./linear.ts";
 import { resolveReviewModel } from "./model.ts";
 import { ReviewStateStore } from "./state.ts";
@@ -29,20 +29,17 @@ export async function runReviewWorkflow(
 	if (pr.isDraft) throw new Error(`PR #${prNumber} is still a draft`);
 	if (!pr.headSha) throw new Error(`Could not resolve head SHA for PR #${prNumber}`);
 
+	const previousReview = config.dryRun ? undefined : await github.getPreviousAgenticReviewStatus(prNumber);
+	if (previousReview?.unresolvedThreadCount) {
+		return skippedWorkflowResult(prNumber, pr.headSha, formatPreviousReviewBlocker(previousReview));
+	}
+	if (!options.force && previousReview?.latestReview.headSha === pr.headSha) {
+		return skippedWorkflowResult(prNumber, pr.headSha, `Commit ${pr.headSha} already has an agentic review on GitHub`);
+	}
+
 	const store = new ReviewStateStore(config.stateFile);
 	if (!options.force && (await store.hasProcessed(repo, prNumber, pr.headSha))) {
-		return {
-			prNumber,
-			headSha: pr.headSha,
-			decision: null,
-			findings: [],
-			bugAnalyses: [],
-			deferrals: [],
-			loggedTickets: [],
-			applied: null,
-			logs: [],
-			skipped: `Commit ${pr.headSha} was already reviewed`,
-		};
+		return skippedWorkflowResult(prNumber, pr.headSha, `Commit ${pr.headSha} was already reviewed`);
 	}
 
 	const model = await resolveReviewModel(pi, ctx, config);
@@ -79,4 +76,38 @@ export async function runReviewWorkflow(
 		applied: state.applied,
 		logs: state.logs,
 	};
+}
+
+function skippedWorkflowResult(prNumber: number, headSha: string, skipped: string): WorkflowResult {
+	return {
+		prNumber,
+		headSha,
+		decision: null,
+		findings: [],
+		bugAnalyses: [],
+		deferrals: [],
+		loggedTickets: [],
+		applied: null,
+		logs: [],
+		skipped,
+	};
+}
+
+function formatPreviousReviewBlocker(blocker: PreviousAgenticReviewStatus): string {
+	const author = blocker.latestReview.author ? ` by @${blocker.latestReview.author}` : "";
+	const submittedAt = blocker.latestReview.submittedAt ? ` on ${blocker.latestReview.submittedAt}` : "";
+	const examples = blocker.unresolvedThreads
+		.slice(0, 3)
+		.map((thread) => {
+			const location = thread.path ? `${thread.path}${thread.line ? `:${thread.line}` : ""}` : "review thread";
+			return thread.url ? `${location} (${thread.url})` : location;
+		})
+		.join(", ");
+	return [
+		`Previous agentic review${author}${submittedAt} still has ${blocker.unresolvedThreadCount} unresolved review thread${blocker.unresolvedThreadCount === 1 ? "" : "s"}.`,
+		"Resolve those review comments before requesting another automated review.",
+		examples ? `Unresolved: ${examples}` : undefined,
+	]
+		.filter((line): line is string => Boolean(line))
+		.join(" ");
 }

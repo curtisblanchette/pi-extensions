@@ -9,33 +9,31 @@ export interface ReviewModelClient {
 	completeJson<T>(systemPrompt: string, userText: string, signal?: AbortSignal): Promise<T>;
 }
 
+/** Register Ollama as a standard OpenAI-compatible pi provider. */
+export function ensureOllamaProvider(pi: ExtensionAPI, config: AgenticReviewConfig): void {
+	registerLocalOpenAiProvider(pi, {
+		provider: "ollama",
+		name: "Ollama",
+		modelName: (id) => `Ollama (${id})`,
+		baseUrl: config.model.ollama.baseUrl,
+		apiKey: config.model.ollama.apiKey || "ollama",
+		contextWindow: config.model.ollama.contextWindow,
+		maxTokens: config.model.maxTokens,
+		modelId: config.model.id || "local-model",
+	});
+}
+
 /** Register llama.server as a standard OpenAI-compatible pi provider. */
 export function ensureLlamaServerProvider(pi: ExtensionAPI, config: AgenticReviewConfig): void {
-	const id = config.model.id || "local-model";
-	pi.registerProvider("llama-server", {
+	registerLocalOpenAiProvider(pi, {
+		provider: "llama-server",
 		name: "llama.server",
-		baseUrl: stripTrailingSlash(config.model.llamaServer.baseUrl),
+		modelName: (id) => `llama.server (${id})`,
+		baseUrl: config.model.llamaServer.baseUrl,
 		apiKey: config.model.llamaServer.apiKey || "local",
-		api: "openai-completions",
-		authHeader: false,
-		models: [
-			{
-				id,
-				name: `llama.server (${id})`,
-				reasoning: false,
-				input: ["text"],
-				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-				contextWindow: config.model.llamaServer.contextWindow,
-				maxTokens: config.model.maxTokens,
-				compat: {
-					supportsStore: false,
-					supportsDeveloperRole: false,
-					supportsReasoningEffort: false,
-					supportsUsageInStreaming: false,
-					maxTokensField: "max_tokens",
-				},
-			},
-		],
+		contextWindow: config.model.llamaServer.contextWindow,
+		maxTokens: config.model.maxTokens,
+		modelId: config.model.id || "local-model",
 	});
 }
 
@@ -44,6 +42,7 @@ export async function resolveReviewModel(
 	ctx: ExtensionContext,
 	config: AgenticReviewConfig,
 ): Promise<ReviewModelClient> {
+	if (config.model.provider === "ollama") ensureOllamaProvider(pi, config);
 	if (config.model.provider === "llama-server") ensureLlamaServerProvider(pi, config);
 
 	const model = resolveModel(ctx, config);
@@ -59,7 +58,7 @@ export async function resolveReviewModel(
 	}
 	const apiKey = configuredKey ?? (auth.ok ? auth.apiKey : undefined);
 	const headers = auth.ok ? auth.headers : undefined;
-	if (!apiKey && model.provider !== "llama-server") {
+	if (!apiKey && !isKeylessLocalProvider(model.provider)) {
 		throw new Error(`No API key configured for ${model.provider}/${model.id}`);
 	}
 
@@ -150,6 +149,50 @@ export function parseJsonResponse<T>(text: string): T {
 		}
 	}
 	throw new Error(`Model returned invalid JSON: ${stripped.slice(0, 500)}`);
+}
+
+function registerLocalOpenAiProvider(
+	pi: ExtensionAPI,
+	options: {
+		provider: string;
+		name: string;
+		modelName: (id: string) => string;
+		baseUrl: string;
+		apiKey: string;
+		contextWindow: number;
+		maxTokens: number;
+		modelId: string;
+	},
+): void {
+	pi.registerProvider(options.provider, {
+		name: options.name,
+		baseUrl: stripTrailingSlash(options.baseUrl),
+		apiKey: options.apiKey,
+		api: "openai-completions",
+		authHeader: false,
+		models: [
+			{
+				id: options.modelId,
+				name: options.modelName(options.modelId),
+				reasoning: false,
+				input: ["text"],
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextWindow: options.contextWindow,
+				maxTokens: options.maxTokens,
+				compat: {
+					supportsStore: false,
+					supportsDeveloperRole: false,
+					supportsReasoningEffort: false,
+					supportsUsageInStreaming: false,
+					maxTokensField: "max_tokens",
+				},
+			},
+		],
+	});
+}
+
+function isKeylessLocalProvider(provider: string): boolean {
+	return provider === "ollama" || provider === "llama-server";
 }
 
 function stripTrailingSlash(value: string): string {
