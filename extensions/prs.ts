@@ -6,6 +6,7 @@ import { complete, type UserMessage } from "@earendil-works/pi-ai";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
 import { BorderedLoader } from "@earendil-works/pi-coding-agent";
 import { Key, matchesKey, truncateToWidth, visibleWidth, type Component } from "@earendil-works/pi-tui";
+import { AGENTIC_REVIEW_INSTRUCTIONS } from "./shared/agentic-review-prompt.ts";
 
 type PrAction = "checkout-branch" | "update-description" | "ready-for-review" | "agentic-review" | "explain-actions-failure" | "refresh";
 type FocusMode = "prs" | "actions";
@@ -1483,26 +1484,7 @@ async function buildAgenticReviewPrompt(pi: ExtensionAPI, cwd: string, repo: Git
 		"Existing PR review comments already posted (append-only/idempotency source of truth; do not duplicate these findings or rephrase them as new comments):",
 		formatReviewComments(existingComments),
 		"",
-		"Review for correctness, bugs, security issues, test gaps, observability/telemetry contract impacts, and maintainability.",
-		"Agentic reviews must be idempotent and append-only: never delete, supersede, repost, or duplicate existing review comments.",
-		"Before reporting a finding, compare it against the existing PR review comments above. Do not report duplicates by same file/line, same root cause, or same suggested fix.",
-		"Only append newly discovered findings that are not already covered by existing PR review comments.",
-		"Do not edit files or push changes unless I explicitly ask.",
-		"Return findings grouped by severity. Include concrete file/line references where possible, and note if no blocking issues are found.",
-		"For every actionable finding, append an inline-comment candidate immediately with the finding it belongs to; do not collect them separately before or after the review.",
-		"Each inline-comment candidate must target the directly offending added/modified line in the PR Files changed view.",
-		"Each inline-comment candidate must include a concise comment plus a GitHub code suggestion fenced with exactly ```suggestion.",
-		"The suggestion block MUST contain the exact replacement line(s) for the offending line/range, so applying it replaces the bad code with the suggested fix.",
-		"Do not include an inline-comment candidate when you cannot provide a directly applicable replacement suggestion for the offending line(s).",
-		"Use this format under each actionable finding:",
-		"Inline comment candidate:",
-		"- Path: <relative/path>",
-		"- Line: <new/right-side line number>",
-		"- Comment:",
-		"  <brief rationale>",
-		"  ```suggestion",
-		"  <replacement line(s)>",
-		"  ```",
+		...AGENTIC_REVIEW_INSTRUCTIONS,
 	].join("\n");
 }
 

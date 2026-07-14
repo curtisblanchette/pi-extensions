@@ -33,7 +33,10 @@ pi install git:github.com/curtisblanchette/pi-extensions
 | Extension | Commands | Best for |
 | --- | --- | --- |
 | [`commit-pr.ts`](./extensions/commit-pr.ts) | `/commit`, `/commit-pr` | Stage files, write a Conventional Commit, push a branch, and open a draft PR from one TUI. |
+| [`planning-agent/`](./extensions/planning-agent/) | `/implementation-plan`, `/planning-agent`, `/save-plan` | Run a read-only planner that produces engineering-ready implementation plans. |
+| [`technical-researcher/`](./extensions/technical-researcher/) | `/research`, `/technical-research`, `/save-research` | Run a separate read-only researcher that produces knowledgebase-ready technical research briefs. |
 | [`prs.ts`](./extensions/prs.ts) | `/prs` | Browse open PRs, inspect CI state, checkout branches, update descriptions, run review workflows, and explain failures. |
+| [`agentic-review/`](./extensions/agentic-review/) | `/agentic-review`, `/agentic-review-server`, `/agentic-review-watch`, `/agentic-review-ui`, `/agentic-review-model`, `/agentic-review-config` | Run and observe asynchronous LangGraph PR reviews with deterministic quality gates, configurable models, and Linear edge-case deferrals. |
 | [`sync-pr-labels.ts`](./extensions/sync-pr-labels.ts) | `/sync-pr-labels` | Normalize a repository's PR workflow labels to the approved label set. |
 
 ## Install
@@ -128,6 +131,22 @@ A terminal PR browser and action launcher inside pi.
 ```text
 /prs
 ```
+
+---
+
+### `/agentic-review` — Asynchronous LangGraph review workflow
+
+A configurable PR-review state machine that watches open PRs carrying `👀 Ready for review`, reuses the `/prs` reviewer prompt, classifies findings as critical/bug/nice-to-have/nit, analyzes bugs against acceptance criteria, logs safe edge-case deferrals in Linear, and deterministically submits either **Approve** or **Request changes**. Its Web UI includes GitHub Device Flow/repository settings, Anthropic/OpenAI key inputs, and selectable per-step I/O/log visualization. It does not mutate outcome labels; repository auto-labelling workflows remain responsible for those transitions.
+
+```text
+/agentic-review 123 --dry-run
+/agentic-review-server
+/agentic-review-model anthropic/claude-sonnet-4-5
+/agentic-review-model openai/gpt-5
+/agentic-review-model llama.server/qwen3-coder
+```
+
+See [`extensions/agentic-review/README.md`](./extensions/agentic-review/README.md) for model, polling, and Linear configuration.
 
 ---
 
