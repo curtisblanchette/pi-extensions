@@ -53,46 +53,81 @@ const PR_LABELS: GitHubLabel[] = [
 
 export default function syncPrLabelsExtension(pi: ExtensionAPI) {
 	pi.registerCommand("sync-pr-labels", {
-		description: "Replace repository labels with the approved PR workflow labels and colors",
+		description: "Create/update approved PR workflow labels; preserve other labels unless --prune is explicitly confirmed",
 		handler: async (args, ctx) => {
 			try {
 				await execOrThrow(pi, "gh", ["--version"], ctx.cwd, "GitHub CLI (gh) is required");
 				const repo = await getActiveRepo(pi, ctx.cwd);
-				const force = args.includes("--yes") || args.includes("-y");
+				const options = parseSyncOptions(args);
+				if (options.invalid) {
+					ctx.ui.notify("Usage: /sync-pr-labels [--yes] [--prune]. --prune requires --yes and an interactive confirmation.", "warning");
+					return;
+				}
 
 				const existing = await listLabels(pi, ctx, repo);
 				const desiredNames = new Set(PR_LABELS.map((label) => label.name));
 				const toDelete = existing.filter((label) => !desiredNames.has(label.name));
 
-				if (!force) {
+				if (!options.apply) {
 					const plan = [
 						`Repository: ${repo.nameWithOwner}`,
 						"",
-						"This will delete labels not in the approved PR workflow set:",
-						...(toDelete.length ? toDelete.map((label) => `- ${label.name}`) : ["- (none)"]),
-						"",
-						"It will create/update these labels with source-of-truth colors:",
+						"This will create/update these PR workflow labels and preserve all other repository labels:",
 						...PR_LABELS.map((label) => `- ${label.name} #${label.color} — ${label.description}`),
 						"",
-						"Run /sync-pr-labels --yes to apply.",
+						toDelete.length
+							? `${toDelete.length} non-workflow labels would be removed only with /sync-pr-labels --prune --yes.`
+							: "No non-workflow labels are present.",
+						"",
+						"Run /sync-pr-labels --yes to apply non-destructively.",
 					].join("\n");
 					ctx.ui.notify(plan, "info");
 					return;
 				}
 
-				for (const label of toDelete) {
-					await deleteLabel(pi, ctx, repo, label.name);
-				}
-				for (const label of PR_LABELS) {
-					await upsertLabel(pi, ctx, repo, label);
+				if (options.prune) {
+					if (!ctx.hasUI || !ctx.ui.confirm) {
+						ctx.ui.notify("Refusing destructive label pruning without an interactive confirmation dialog.", "error");
+						return;
+					}
+					const confirmed = await ctx.ui.confirm(
+						"Delete non-workflow repository labels?",
+						[
+							`Repository: ${repo.nameWithOwner}`,
+							"",
+							"These labels will be permanently deleted:",
+							...(toDelete.length ? toDelete.map((label) => `- ${label.name}`) : ["- (none)"]),
+						].join("\n"),
+					);
+					if (!confirmed) {
+						ctx.ui.notify("Label pruning cancelled. No labels were changed.", "info");
+						return;
+					}
 				}
 
-				ctx.ui.notify(`Synced ${PR_LABELS.length} PR labels for ${repo.nameWithOwner}; removed ${toDelete.length} other labels.`, "info");
+				for (const label of PR_LABELS) await upsertLabel(pi, ctx, repo, label);
+				if (options.prune) {
+					for (const label of toDelete) await deleteLabel(pi, ctx, repo, label.name);
+				}
+
+				ctx.ui.notify(
+					`Synced ${PR_LABELS.length} PR labels for ${repo.nameWithOwner}${options.prune ? `; removed ${toDelete.length} non-workflow labels.` : "; preserved other repository labels."}`,
+					"info",
+				);
 			} catch (error) {
 				ctx.ui.notify(formatError(error), "error");
 			}
 		},
 	});
+}
+
+export function parseSyncOptions(args: string): { apply: boolean; prune: boolean; invalid: boolean } {
+	const tokens = args.trim().split(/\s+/).filter(Boolean);
+	const known = new Set(["--yes", "-y", "--prune"]);
+	const invalid = tokens.some((token) => !known.has(token));
+	const apply = tokens.includes("--yes") || tokens.includes("-y");
+	const prune = tokens.includes("--prune");
+	return { apply, prune, invalid: invalid || (prune && !apply) };
 }
 
 async function listLabels(pi: ExtensionAPI, ctx: ExtensionCommandContext, repo: GitHubRepo): Promise<GitHubLabel[]> {

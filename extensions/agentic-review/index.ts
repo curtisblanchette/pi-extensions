@@ -1,13 +1,14 @@
 import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { loadConfig, parseModelSpec, redactConfig, withModelOverride, type AgenticReviewConfig } from "./src/config.ts";
 import { getActiveRepo, GitHubClient } from "./src/github.ts";
-import { ensureLlamaServerProvider, ensureOllamaProvider, resolveReviewModel } from "./src/model.ts";
+import { resolveReviewModel } from "./src/model.ts";
 import { runReviewWorkflow } from "./src/workflow.ts";
 import type { WorkflowResult } from "./src/types.ts";
 import { WorkflowDashboard } from "./src/dashboard.ts";
 import { AgenticReviewWebUi } from "./src/web-ui.ts";
 import { GitHubOAuthManager } from "./src/github-oauth.ts";
 import { ProviderKeyStore } from "./src/provider-keys.ts";
+import { RuntimeSettingsStore } from "./src/runtime-settings.ts";
 
 const STATUS_KEY = "agentic-review";
 
@@ -15,15 +16,17 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 	const dashboard = new WorkflowDashboard();
 	const githubOAuth = new GitHubOAuthManager();
 	const providerKeys = new ProviderKeyStore();
+	const runtimeSettings = new RuntimeSettingsStore();
 	let activeContext: ExtensionContext | undefined;
-	const webUi = new AgenticReviewWebUi(dashboard, githubOAuth, providerKeys, () => {
+	const webUi = new AgenticReviewWebUi(dashboard, githubOAuth, providerKeys, runtimeSettings, () => {
 		if (activeContext && polling) void pollOnce(activeContext);
 	});
 	let pollTimer: NodeJS.Timeout | undefined;
 	let polling = false;
 	let pollInFlight = false;
 	let modelOverride: string | undefined;
-	const reviewsInFlight = new Set<number>();
+	const reviewsInFlight = new Set<string>();
+	const reviewControllers = new Map<string, AbortController>();
 
 	pi.registerFlag("agentic-review-watch", {
 		description: "Poll GitHub for open PRs labelled Ready for review",
@@ -31,8 +34,8 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 		default: false,
 	});
 
-	function resolveConfig(cwd: string, overrides: { dryRun?: boolean } = {}): AgenticReviewConfig {
-		let config = loadConfig(cwd).config;
+	function resolveConfig(ctx: ExtensionContext, overrides: { dryRun?: boolean } = {}): AgenticReviewConfig {
+		let config = loadConfig(ctx.cwd, projectIsTrusted(ctx)).config;
 		config = withModelOverride(config, modelOverride);
 		config = {
 			...config,
@@ -51,8 +54,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			},
 		};
 		if (overrides.dryRun !== undefined) config = { ...config, dryRun: overrides.dryRun };
-		if (config.model.provider === "ollama") ensureOllamaProvider(pi, config);
-		if (config.model.provider === "llama-server") ensureLlamaServerProvider(pi, config);
+		if (runtimeSettings.status().forceDryRun) config = { ...config, dryRun: true };
 		dashboard.setMaxRuns(config.webUi.maxRuns);
 		return config;
 	}
@@ -75,7 +77,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 
 	function startPoller(ctx: ExtensionContext): void {
 		stopPoller();
-		const config = resolveConfig(ctx.cwd);
+		const config = resolveConfig(ctx);
 		const readiness = pollingReadiness(config);
 		polling = true;
 		pollTimer = setInterval(() => void pollOnce(ctx), config.polling.intervalMs);
@@ -94,12 +96,16 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 
 	async function startWebUi(ctx: ExtensionContext): Promise<string> {
 		activeContext = ctx;
-		const config = resolveConfig(ctx.cwd);
+		const config = resolveConfig(ctx);
 		return webUi.start(config.webUi.port);
 	}
 
+	function abortReviews(): void {
+		for (const controller of reviewControllers.values()) controller.abort();
+	}
+
 	async function pollOnce(ctx: ExtensionContext): Promise<void> {
-		const config = resolveConfig(ctx.cwd);
+		const config = resolveConfig(ctx);
 		const readiness = pollingReadiness(config);
 		if (!readiness.ready) {
 			dashboard.setWatcherStatus({
@@ -126,7 +132,10 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			);
 			dashboard.setWatcherStatus({ repository: repo.nameWithOwner, candidateCount: candidates.length, waitingFor: undefined });
 			for (const pr of candidates) {
-				if (reviewsInFlight.has(pr.number)) continue;
+				const reviewId = reviewKey(ctx, pr.number);
+				if (reviewsInFlight.has(reviewId)) continue;
+				const controller = new AbortController();
+				reviewControllers.set(reviewId, controller);
 				const run = dashboard.begin({
 					source: "poller",
 					prNumber: pr.number,
@@ -135,18 +144,23 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 					dryRun: config.dryRun,
 				});
 				try {
-					reviewsInFlight.add(pr.number);
+					reviewsInFlight.add(reviewId);
 					const result = await runReviewWorkflow(pi, ctx, config, pr.number, {
+						signal: controller.signal,
 						onProgress: (message) => updateStatus(ctx, truncateStatus(message)),
 						onTelemetry: (event) => dashboard.record(run.id, event),
 					});
 					dashboard.complete(run.id, result);
 					if (!result.skipped) notifyResult(ctx, result);
 				} catch (error) {
-					dashboard.fail(run.id, error);
-					ctx.ui.notify(`Agentic review failed for ${repo.nameWithOwner}#${pr.number}: ${formatError(error)}`, "error");
+					if (isAbortError(error)) dashboard.fail(run.id, new Error("Review cancelled"));
+					else {
+						dashboard.fail(run.id, error);
+						ctx.ui.notify(`Agentic review failed for ${repo.nameWithOwner}#${pr.number}: ${formatError(error)}`, "error");
+					}
 				} finally {
-					reviewsInFlight.delete(pr.number);
+					reviewsInFlight.delete(reviewId);
+					reviewControllers.delete(reviewId);
 					updateStatus(ctx);
 				}
 			}
@@ -168,17 +182,19 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			const dryRun = tokens.includes("--dry-run");
 			const force = tokens.includes("--force");
 			const numberToken = tokens.find((token) => /^#?\d+$/.test(token));
-			let activePrNumber: number | undefined;
+			let activeReviewId: string | undefined;
 			let claimedReview = false;
 			let dashboardRunId: string | undefined;
 			try {
-				const config = resolveConfig(ctx.cwd, dryRun ? { dryRun: true } : {});
+				const config = resolveConfig(ctx, dryRun ? { dryRun: true } : {});
 				const prNumber = numberToken
 					? Number(numberToken.replace(/^#/, ""))
 					: await currentBranchPrNumber(pi, ctx, config.github.repository, config.github.accessToken);
-				activePrNumber = prNumber;
-				if (reviewsInFlight.has(prNumber)) throw new Error(`PR #${prNumber} is already being reviewed`);
-				reviewsInFlight.add(prNumber);
+				activeReviewId = reviewKey(ctx, prNumber);
+				if (reviewsInFlight.has(activeReviewId)) throw new Error(`PR #${prNumber} is already being reviewed`);
+				const controller = new AbortController();
+				reviewControllers.set(activeReviewId, controller);
+				reviewsInFlight.add(activeReviewId);
 				claimedReview = true;
 				const repo = await getActiveRepo(pi, ctx.cwd, config.github.repository);
 				const run = dashboard.begin({
@@ -192,6 +208,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 				updateStatus(ctx, `reviewing #${prNumber}`);
 				const result = await runReviewWorkflow(pi, ctx, config, prNumber, {
 					force,
+					signal: controller.signal,
 					onProgress: (message) => updateStatus(ctx, truncateStatus(message)),
 					onTelemetry: (event) => dashboard.record(run.id, event),
 				});
@@ -199,10 +216,17 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 				if (result.skipped) ctx.ui.notify(`PR #${prNumber} skipped: ${result.skipped}. Use --force to rerun.`, "info");
 				else notifyResult(ctx, result);
 			} catch (error) {
-				if (dashboardRunId) dashboard.fail(dashboardRunId, error);
-				ctx.ui.notify(formatError(error), "error");
+				if (isAbortError(error)) {
+					if (dashboardRunId) dashboard.fail(dashboardRunId, new Error("Review cancelled"));
+				} else {
+					if (dashboardRunId) dashboard.fail(dashboardRunId, error);
+					ctx.ui.notify(formatError(error), "error");
+				}
 			} finally {
-				if (claimedReview && activePrNumber !== undefined) reviewsInFlight.delete(activePrNumber);
+				if (claimedReview && activeReviewId !== undefined) {
+					reviewsInFlight.delete(activeReviewId);
+					reviewControllers.delete(activeReviewId);
+				}
 				updateStatus(ctx);
 			}
 		},
@@ -214,7 +238,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			const action = args.trim().toLowerCase() || "status";
 			if (action === "on") {
 				startPoller(ctx);
-				const config = resolveConfig(ctx.cwd);
+				const config = resolveConfig(ctx);
 				const readiness = pollingReadiness(config);
 				ctx.ui.notify(
 					readiness.ready
@@ -238,7 +262,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 				ctx.ui.notify("Usage: /agentic-review-watch on|off|run|status", "warning");
 				return;
 			}
-			const config = resolveConfig(ctx.cwd);
+			const config = resolveConfig(ctx);
 			ctx.ui.notify(
 				[
 					`Poller: ${polling ? "running" : "stopped"}`,
@@ -258,6 +282,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 		try {
 			if (action === "stop") {
 				stopPoller(ctx);
+				abortReviews();
 				await webUi.stop();
 				ctx.ui.notify("Agentic-review server and watcher stopped", "info");
 				return;
@@ -285,7 +310,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			}
 			const url = await startWebUi(ctx);
 			startPoller(ctx);
-			const readiness = pollingReadiness(resolveConfig(ctx.cwd));
+			const readiness = pollingReadiness(resolveConfig(ctx));
 			ctx.ui.notify(
 				readiness.ready
 					? `Agentic-review server and watcher started: ${url}`
@@ -321,20 +346,20 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			const value = args.trim();
 			try {
 				if (!value) {
-					const config = resolveConfig(ctx.cwd);
+					const config = resolveConfig(ctx);
 					const model = await resolveReviewModel(pi, ctx, config);
 					ctx.ui.notify(`Agentic-review model: ${model.provider}/${model.id}${modelOverride ? " (session override)" : ""}`, "info");
 					return;
 				}
 				if (value.toLowerCase() === "current") {
 					modelOverride = undefined;
-					const model = await resolveReviewModel(pi, ctx, resolveConfig(ctx.cwd));
+					const model = await resolveReviewModel(pi, ctx, resolveConfig(ctx));
 					ctx.ui.notify(`Agentic-review model now follows pi: ${model.provider}/${model.id}`, "info");
 					return;
 				}
 				const parsed = parseModelSpec(value);
 				modelOverride = `${parsed.provider}/${parsed.id}`;
-				const model = await resolveReviewModel(pi, ctx, resolveConfig(ctx.cwd));
+				const model = await resolveReviewModel(pi, ctx, resolveConfig(ctx));
 				ctx.ui.notify(`Agentic-review model set for this session: ${model.provider}/${model.id}`, "info");
 			} catch (error) {
 				ctx.ui.notify(formatError(error), "error");
@@ -346,8 +371,8 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 		description: "Show resolved agentic-review configuration and config file locations",
 		handler: async (_args, ctx) => {
 			try {
-				const loaded = loadConfig(ctx.cwd);
-				const config = withModelOverride(loaded.config, modelOverride);
+				const loaded = loadConfig(ctx.cwd, projectIsTrusted(ctx));
+				const config = resolveConfig(ctx);
 				ctx.ui.notify(
 					[
 						`Loaded: ${loaded.paths.loaded.length ? loaded.paths.loaded.join(", ") : "defaults + environment"}`,
@@ -367,7 +392,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 	pi.on("session_start", async (_event, ctx) => {
 		activeContext = ctx;
 		try {
-			const config = resolveConfig(ctx.cwd);
+			const config = resolveConfig(ctx);
 			const enabledByFlag = pi.getFlag("agentic-review-watch") === true;
 			if (enabledByFlag || config.polling.enabled || config.webUi.enabled) {
 				startPoller(ctx);
@@ -387,6 +412,7 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 
 	pi.on("session_shutdown", async (_event, ctx) => {
 		stopPoller(ctx);
+		abortReviews();
 		activeContext = undefined;
 		await webUi.stop();
 	});
@@ -429,6 +455,19 @@ function notifyResult(ctx: ExtensionContext, result: WorkflowResult): void {
 			.join("\n"),
 		"info",
 	);
+}
+
+function reviewKey(ctx: ExtensionContext, prNumber: number): string {
+	return `${ctx.cwd}:${prNumber}`;
+}
+
+function isAbortError(error: unknown): boolean {
+	return error instanceof Error && error.name === "AbortError";
+}
+
+function projectIsTrusted(ctx: ExtensionContext): boolean {
+	const trustCheck = (ctx as ExtensionContext & { isProjectTrusted?: () => boolean }).isProjectTrusted;
+	return trustCheck?.() ?? false;
 }
 
 function truncateStatus(value: string): string {

@@ -11,7 +11,7 @@ gather PR context
   → agentic review (one pass per diff chunk)
   → classify findings
   → analyze bugs against acceptance criteria
-  → create Linear tickets for safe edge-case deferrals
+  → create Linear tickets for non-blocking follow-ups
   → deterministic quality gate
   → post GitHub comments and review event
 ```
@@ -23,15 +23,15 @@ The agentic review node shares the exact reviewer instruction source used by the
 | Findings | GitHub review |
 | --- | --- |
 | Any critical finding | Request changes |
-| Any normal-path or non-deferrable bug | Request changes |
-| Edge-case bug that cannot be logged in Linear | Request changes |
-| Only deferred, Linear-tracked edge bugs | Approve with comments |
+| Bug analysis says the issue directly blocks a safe merge | Request changes |
+| Non-blocking bug marked for follow-up | Approve with comments; create a Linear follow-up when available |
+| Non-blocking bug that only needs review context | Approve with comments |
 | Only nice-to-haves and/or nits | Approve with comments |
 | No findings | Approve |
 
 The extension does **not** create, remove, or update outcome labels. Repository auto-labelling workflows are expected to translate the submitted `APPROVE` or `REQUEST_CHANGES` review into labels such as `‼️ Merge with comments`, `✅ Ready to merge`, or `😭 Changes requested`.
 
-A model cannot downgrade a normal-path bug to deferred: the code forces every non-edge bug and every acceptance-criteria-impacting bug to blocking status.
+A bug is not automatically merge-blocking. The deterministic gate only requests changes for critical findings or bugs whose bug-analysis pass sets `mergeImpact` to `blocking`; otherwise bugs are surfaced as comments and, when marked `follow-up`, tracked in Linear if possible.
 
 ## Commands
 
@@ -82,14 +82,15 @@ The dashboard observes both manual and poller-driven reviews end to end:
 - repository, PR, source, model, duration, and dry-run state;
 - a selectable `gather → review → classify → analyze-bugs → log-deferrals → gate → apply` graph;
 - sanitized input, output, status, and logs for each selected step invocation;
+- bounded live LLM output streams for review, classification, and bug-analysis steps; reasoning/thinking deltas are intentionally omitted from retained dashboard telemetry;
 - per-chunk model-review progress and truncated review output;
 - finding counts and severity breakdowns;
-- acceptance-criteria and edge-case dispositions;
+- acceptance-criteria, merge-impact, and edge-case dispositions;
 - Linear ticket identifiers, links, and failures;
 - deterministic `APPROVE` or `REQUEST_CHANGES` decisions; and
 - GitHub inline-comment and review-submission results.
 
-Updates stream live through Server-Sent Events. Step I/O is intentionally bounded: raw diffs and credentials are excluded, while review/classification output is truncated before entering telemetry. The server binds only to loopback.
+Updates stream live through Server-Sent Events. Step I/O is intentionally bounded: raw diffs and credentials are excluded, review/classification output is truncated before entering telemetry, and model stream telemetry is capped so high-reasoning models cannot exhaust the pi process heap. The server binds only to loopback.
 
 Observer endpoints are read-only:
 
@@ -101,7 +102,7 @@ GET /api/runs/:id
 GET /api/events       # SSE
 ```
 
-Settings adds same-origin-only mutations for repository selection and provider keys. GitHub auth always comes from the local GitHub CLI (`gh auth token`) and tokens are never persisted or returned by an endpoint. Run history is in-memory and bounded by `webUi.maxRuns`; it disappears when the pi process exits. `/agentic-review-server stop` shuts down both the watcher and Web UI.
+Settings adds same-origin-only mutations for repository selection, provider keys, and runtime safety toggles. GitHub auth always comes from the local GitHub CLI (`gh auth token`) and tokens are never persisted or returned by an endpoint. Run history is in-memory and bounded by `webUi.maxRuns`; it disappears when the pi process exits. `/agentic-review-server stop` shuts down both the watcher and Web UI.
 
 When `webUi.enabled` is `true`, both the server and watcher start automatically with the pi session. `openOnStart` controls whether a browser opens.
 
@@ -152,6 +153,18 @@ Keys are stored at:
 
 This file is also mode `0600`.
 
+### Enforced dry-run mode
+
+Settings includes **Enforce dry-run for all runs**. When enabled, it overrides project/user config and makes every manual or watcher-triggered run report findings only. GitHub review/comment submission and Linear ticket creation are skipped; the observer still shows findings, bug analysis, gate decisions, and candidate comments.
+
+The toggle is stored locally at:
+
+```text
+~/.pi/agent/agentic-review-settings.json
+```
+
+The file is mode `0600`.
+
 ## Trigger
 
 pi does not expose a GitHub webhook receiver, so the extension uses a cleanup-safe background poller. It selects PRs that are:
@@ -175,6 +188,38 @@ or set `polling.enabled` to `true` in config. The core `runReviewWorkflow()` is 
 The extension records successful reviews by repository, PR number, and head SHA in `.pi/agentic-review-state.json`. A new commit is reviewable; the same commit is skipped unless `--force` is used. This also prevents duplicate reviews while repository auto-labelling catches up. Before posting, the graph fetches the PR again and refuses to post a stale review if the head changed during processing.
 
 If an agentic review has already been submitted, re-applying `👀 Ready for review` is not enough to trigger another posted review. Before spending model time or writing to GitHub, the workflow checks GitHub itself: it skips when the latest agentic review is already on the current head SHA, and it also skips while any previous review conversation is still unresolved. Resolve the review comments first, then push a new commit or rerun with `--force` if you intentionally want another review.
+
+### Author allowlist
+
+Set `github.authorAllowlist` to restrict automated reviews to trusted PR authors. Empty arrays mean all authors are allowed. To review only PRs authored by members of the `metalabdesign` GitHub organization:
+
+```json
+{
+  "github": {
+    "authorAllowlist": {
+      "users": [],
+      "organizations": ["metalabdesign"],
+      "teams": []
+    }
+  }
+}
+```
+
+For a specific GitHub team, use a team slug. Bare team slugs resolve under the repository owner; use `org/team-slug` to be explicit:
+
+```json
+{
+  "github": {
+    "authorAllowlist": {
+      "users": [],
+      "organizations": [],
+      "teams": ["metalabdesign/engineering"]
+    }
+  }
+}
+```
+
+Membership checks use GitHub CLI auth and require `read:org` for private organization/team membership.
 
 ## Configuration
 
@@ -218,7 +263,12 @@ Example project config:
   },
   "github": {
     "triggerLabel": "👀 Ready for review",
-    "repository": "optional-owner/repository"
+    "repository": "optional-owner/repository",
+    "authorAllowlist": {
+      "users": [],
+      "organizations": ["metalabdesign"],
+      "teams": []
+    }
   },
   "linear": {
     "enabled": true,
@@ -339,17 +389,17 @@ export AGENTIC_REVIEW_LINEAR_TEAM=ENG
 
 `linear.team` may be a team UUID, key, or exact name. If omitted, the extension tries the prefix of a linked Linear issue (for example `ENG` from `ENG-123`), then uses the only visible team when exactly one exists. It fails closed when the team is ambiguous.
 
-A deferred ticket contains:
+A follow-up ticket contains:
 
 - source repository, PR URL/number, branch, and reviewed SHA;
 - file/line source context;
 - finding rationale;
-- a precise edge-case definition;
+- merge-impact and edge-case context;
 - acceptance-criteria impact;
 - linked Linear issue context when available; and
 - a regression-test follow-up.
 
-If a bug is marked deferred but Linear is disabled, unconfigured, ambiguous, or errors, the quality gate changes the outcome to **Request changes**. No deferred bug is allowed through without durable tracking.
+If a bug is marked as a non-blocking `follow-up`, the workflow attempts to create a durable Linear ticket. Linear failures are reported in the review summary and observer UI, but they do not by themselves convert the review to **Request changes**.
 
 ## Environment variables
 
@@ -362,6 +412,9 @@ If a bug is marked deferred but Linear is disabled, unconfigured, ambiguous, or 
 | `AGENTIC_REVIEW_UI_OPEN_ON_START` | Open a browser after automatic startup |
 | `AGENTIC_REVIEW_UI_MAX_RUNS` | In-memory run retention (10–1000) |
 | `AGENTIC_REVIEW_GITHUB_REPOSITORY` | Repository override in `owner/name` format |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_USERS` | Comma-separated GitHub usernames allowed to trigger reviews |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_ORGS` | Comma-separated GitHub orgs whose members may trigger reviews |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_TEAMS` | Comma-separated GitHub teams (`team-slug` or `org/team-slug`) whose members may trigger reviews |
 | `AGENTIC_REVIEW_MODEL` | `provider/model` |
 | `AGENTIC_REVIEW_PROVIDER` / `AGENTIC_REVIEW_MODEL_ID` | Separate model selector |
 | `AGENTIC_REVIEW_TEMPERATURE` | Model temperature |
@@ -379,7 +432,7 @@ If a bug is marked deferred but Linear is disabled, unconfigured, ambiguous, or 
 | `LINEAR_API_KEY` | Linear personal/API key |
 | `AGENTIC_REVIEW_LINEAR_ENABLED` | Enable/disable Linear integration |
 | `AGENTIC_REVIEW_LINEAR_TEAM` | Team UUID/key/name |
-| `AGENTIC_REVIEW_LINEAR_PROJECT_ID` | Project UUID for deferrals |
+| `AGENTIC_REVIEW_LINEAR_PROJECT_ID` | Project UUID for follow-ups |
 | `AGENTIC_REVIEW_LINEAR_LABEL_IDS` | Comma-separated label UUIDs |
 
 ## Development

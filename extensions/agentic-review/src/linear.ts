@@ -165,7 +165,7 @@ export class LinearClient {
 function buildDescription(pr: PrContext, finding: Finding, analysis: BugAnalysis): string {
 	const location = finding.path ? `${finding.path}${finding.line ? `:${finding.line}` : ""}` : "No line-specific location";
 	return [
-		"## Deferred edge-case bug",
+		"## Non-blocking bug follow-up",
 		"",
 		`This follow-up was created automatically by the agentic review of [${pr.repo.nameWithOwner} PR #${pr.number}](${pr.url}) at commit \`${pr.headSha}\`.`,
 		"",
@@ -176,13 +176,19 @@ function buildDescription(pr: PrContext, finding: Finding, analysis: BugAnalysis
 		"",
 		`**Source:** \`${location}\``,
 		"",
+		"### Merge impact",
+		`Merge impact: ${analysis.mergeImpact}`,
+		`Directly blocks merge: ${analysis.directlyBlocksMerge ? "yes" : "no"}`,
+		"",
 		"### Edge case",
-		analysis.edgeCaseDefinition || "The review classified this as an edge case but did not provide a separate definition.",
+		analysis.isEdgeCase
+			? analysis.edgeCaseDefinition || "The review classified this as an edge case but did not provide a separate definition."
+			: "This follow-up was not classified as an edge case; it was judged real but non-blocking.",
 		"",
 		"### Acceptance-criteria impact",
 		analysis.impactsAcceptanceCriteria
-			? "The edge case intersects the current acceptance criteria but was judged safe to defer with explicit tracking."
-			: "The edge case does not prevent the current acceptance criteria from being met.",
+			? "The bug intersects the current acceptance criteria but was judged not to directly block a safe merge."
+			: "The bug does not prevent the current acceptance criteria from being met.",
 		"",
 		analysis.reasoning,
 		"",

@@ -113,17 +113,19 @@ A terminal PR browser and action launcher inside pi.
 - Shows PR branch, author, updated time, URL, and CI/check status.
 - Keeps workflow labels fresh based on draft/review state where possible.
 - Checks out a selected PR branch locally.
+- Addresses unresolved review threads by pulling the PR branch, having the agent implement requested fixes and missing documentation, then replying with the pushed commit details and resolving each addressed thread.
 - Generates and lets you edit an AI-written PR description before updating GitHub.
 - Marks draft PRs ready for review.
-- Runs agentic review flows that propose inline comments, ask for approval, and post selected comments.
-- Explains failing GitHub Actions/check runs using the active pi model, with a fallback summary when model auth is unavailable.
+- Runs agentic review flows that let you deselect and confirm inline comments before posting, then submit either **Request Changes** or **Approve**; approvals can optionally add the `‼️ Merge with comments` label.
+- Explains failing GitHub Actions/check runs using the active pi model, with a fallback summary when model auth is unavailable, then—after explicit approval—checks out the PR branch for the agent to fix, verify, commit, and push.
 
 **Use cases**
 
 - You review several PRs per day and want a keyboard-first selector in pi.
 - You need to jump from a PR list to the branch locally without remembering `gh pr checkout` syntax.
+- Review comments need code or documentation updates and you want the agent to implement, verify, commit, push, and close the loop on GitHub.
 - A PR description is stale or empty and you want a diff/template-aware draft.
-- CI is red and you want a plain-English failure summary before digging into logs.
+- CI is red and you want a plain-English failure summary, then an approved fix-and-push workflow on the affected PR branch.
 - You want AI-suggested inline review comments but still approve every comment before posting.
 
 **Run**

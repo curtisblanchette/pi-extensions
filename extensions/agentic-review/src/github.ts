@@ -1,7 +1,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, posix } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type {
 	AppliedResult,
@@ -70,6 +70,11 @@ export interface PreviousAgenticReviewStatus {
 	unresolvedThreads: ReviewThreadSummary[];
 }
 
+export interface AuthorAllowlistResult {
+	allowed: boolean;
+	reason?: string;
+}
+
 export class GitHubClient {
 	constructor(
 		private pi: ExtensionAPI,
@@ -109,6 +114,31 @@ export class GitHubClient {
 		const branch = result.stdout.trim();
 		if (!branch || branch === "HEAD") return undefined;
 		return (await this.listOpenPullRequests()).find((pr) => pr.headRefName === branch);
+	}
+
+	async checkAuthorAllowlist(
+		author: string | undefined,
+		allowlist: AgenticReviewConfig["github"]["authorAllowlist"],
+	): Promise<AuthorAllowlistResult> {
+		const users = allowlist.users.map((user) => user.toLowerCase());
+		const organizations = allowlist.organizations;
+		const teams = allowlist.teams;
+		if (!users.length && !organizations.length && !teams.length) return { allowed: true };
+		if (!author) return { allowed: false, reason: "PR author is unknown and cannot be checked against the author allowlist" };
+		if (users.includes(author.toLowerCase())) return { allowed: true };
+
+		for (const org of organizations) {
+			if (await this.isOrganizationMember(org, author)) return { allowed: true };
+		}
+		for (const team of teams) {
+			const parsed = parseTeamSpec(team, this.repo.owner);
+			if (await this.isTeamMember(parsed.org, parsed.teamSlug, author)) return { allowed: true };
+		}
+
+		return {
+			allowed: false,
+			reason: `PR author @${author} is not in the allowed GitHub authors: ${describeAuthorAllowlist(allowlist, this.repo.owner)}`,
+		};
 	}
 
 	async getPreviousAgenticReviewStatus(prNumber: number): Promise<PreviousAgenticReviewStatus | undefined> {
@@ -167,6 +197,28 @@ export class GitHubClient {
 				body: comment.body,
 			})),
 		};
+	}
+
+	async getReviewGuidance(changedFiles: PrContext["changedFiles"], ref: string): Promise<Array<{ path: string; content: string }>> {
+		const candidates = policyCandidatePaths(changedFiles.map((file) => file.path));
+		const guidance: Array<{ path: string; content: string }> = [];
+		for (const path of candidates) {
+			const content = await this.getTextFileAtRef(path, ref);
+			if (!content) continue;
+			guidance.push({ path, content: truncate(content, 12_000) });
+		}
+
+		// AGENTS.md may link to repository-specific ADRs or coding conventions.
+		// Resolve only repository-relative Markdown references and cap the total
+		// context so a malicious or unusually large file cannot swamp the review.
+		for (const agent of guidance.filter((entry) => posix.basename(entry.path).toLowerCase() === "agents.md")) {
+			for (const path of referencedPolicyPaths(agent.path, agent.content)) {
+				if (guidance.length >= 20 || guidance.some((entry) => entry.path === path)) continue;
+				const content = await this.getTextFileAtRef(path, ref);
+				if (content) guidance.push({ path, content: truncate(content, 12_000) });
+			}
+		}
+		return guidance;
 	}
 
 	async applyReview(
@@ -256,6 +308,45 @@ export class GitHubClient {
 			],
 			`Failed to submit ${decision.event} review for PR #${prNumber}`,
 		);
+	}
+
+	private async getTextFileAtRef(path: string, ref: string): Promise<string | undefined> {
+		const encodedPath = path.split("/").map(encodeURIComponent).join("/");
+		try {
+			return await this.api(
+				["-H", "Accept: application/vnd.github.raw+json", `repos/${this.repo.owner}/${this.repo.name}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`],
+				`Failed to load review guidance ${path}`,
+			);
+		} catch {
+			// Most candidate locations do not exist in a repository. Treat a failed
+			// optional policy lookup as absent; primary PR retrieval still fails hard.
+			return undefined;
+		}
+	}
+
+	private async isOrganizationMember(org: string, username: string): Promise<boolean> {
+		try {
+			await this.api(
+				["--method", "GET", `orgs/${org}/members/${username}`],
+				`Failed to check GitHub organization membership for @${username} in ${org}`,
+			);
+			return true;
+		} catch {
+			return false;
+		}
+	}
+
+	private async isTeamMember(org: string, teamSlug: string, username: string): Promise<boolean> {
+		try {
+			const output = await this.api(
+				["--method", "GET", `orgs/${org}/teams/${teamSlug}/memberships/${username}`],
+				`Failed to check GitHub team membership for @${username} in ${org}/${teamSlug}`,
+			);
+			const membership = JSON.parse(output || "{}") as { state?: string };
+			return membership.state === "active" || membership.state === undefined;
+		} catch {
+			return false;
+		}
 	}
 
 	private async getLatestAgenticReview(prNumber: number): Promise<RestPullRequestReview | undefined> {
@@ -388,6 +479,43 @@ function mapPullRequest(pr: RestPullRequest): PullRequestSummary {
 		labels: pr.labels?.map((label) => label.name).filter((name): name is string => Boolean(name)) ?? [],
 		state: pr.state,
 	};
+}
+
+function policyCandidatePaths(changedFiles: string[]): string[] {
+	const paths = new Set<string>(["AGENTS.md"]);
+	for (const changedPath of changedFiles) {
+		let directory = posix.dirname(changedPath.replace(/\\/g, "/"));
+		while (directory && directory !== ".") {
+			paths.add(posix.join(directory, "AGENTS.md"));
+			directory = posix.dirname(directory);
+		}
+	}
+	return [...paths].slice(0, 20);
+}
+
+function referencedPolicyPaths(agentPath: string, content: string): string[] {
+	const base = posix.dirname(agentPath);
+	const references = [...content.matchAll(/(?:\]\(|`)([^`)#?\s]+\.md)(?:\)|`)/gi)].map((match) => match[1]);
+	return [...new Set(references)]
+		.filter((reference): reference is string => Boolean(reference) && !reference.includes("://"))
+		.map((reference) => posix.normalize(posix.join(base, reference)))
+		.filter((reference) => reference !== ".." && !reference.startsWith("../"));
+}
+
+function parseTeamSpec(value: string, defaultOrg: string): { org: string; teamSlug: string } {
+	const [orgOrTeam, team] = value.split("/");
+	return team ? { org: orgOrTeam, teamSlug: team } : { org: defaultOrg, teamSlug: orgOrTeam };
+}
+
+function describeAuthorAllowlist(allowlist: AgenticReviewConfig["github"]["authorAllowlist"], defaultOrg: string): string {
+	return [
+		...allowlist.users.map((user) => `@${user}`),
+		...allowlist.organizations.map((org) => `org:${org}`),
+		...allowlist.teams.map((team) => {
+			const parsed = parseTeamSpec(team, defaultOrg);
+			return `team:${parsed.org}/${parsed.teamSlug}`;
+		}),
+	].join(", ");
 }
 
 function parseGitHubRemote(url: string): GitHubRepo | undefined {
