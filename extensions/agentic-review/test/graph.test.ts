@@ -4,6 +4,7 @@ import { createAgenticReviewGraph } from "../src/graph.ts";
 import { PR_LABELS } from "../src/labels.ts";
 import type { AgenticReviewConfig } from "../src/config.ts";
 import type { BugAnalysis, Decision, Finding, PrContext } from "../src/types.ts";
+import type { WorkflowTelemetryEvent } from "../src/telemetry.ts";
 
 const context: PrContext = {
 	repo: { owner: "example", name: "repo", nameWithOwner: "example/repo", host: "github.com" },
@@ -33,7 +34,7 @@ const config: AgenticReviewConfig = {
 		llamaServer: { baseUrl: "http://localhost:8080/v1", apiKey: "local", contextWindow: 32_768 },
 	},
 	review: { maxDiffCharsPerChunk: 60_000, maxChunks: 20, postInlineComments: true },
-	github: { triggerLabel: PR_LABELS.readyForReview },
+	github: { triggerLabel: PR_LABELS.readyForReview, authorAllowlist: { users: [], organizations: [], teams: [] } },
 	linear: { enabled: true, endpoint: "https://api.linear.app/graphql", apiKey: "test", team: "ENG", labelIds: [] },
 	dryRun: false,
 	stateFile: "/tmp/agentic-review-test-state.json",
@@ -51,10 +52,10 @@ function finding(severity: Finding["severity"]): Finding {
 	};
 }
 
-async function run(findings: Finding[], analyses: BugAnalysis[] = [], linearFailure?: string) {
+async function run(findings: Finding[], analyses: BugAnalysis[] = [], linearFailure?: string, emitThinking = false) {
 	let appliedDecision: Decision | undefined;
 	let jsonCall = 0;
-	const telemetry: Array<{ type: string; stage?: string }> = [];
+	const telemetry: WorkflowTelemetryEvent[] = [];
 	const graph = createAgenticReviewGraph({
 		github: {
 			gatherContext: async () => structuredClone(context),
@@ -84,8 +85,24 @@ async function run(findings: Finding[], analyses: BugAnalysis[] = [], linearFail
 		model: {
 			provider: "openai",
 			id: "test-model",
-			completeText: async () => "Review complete",
-			completeJson: async <T>() => {
+			completeText: async (
+				_system: string,
+				_user: string,
+				_signal?: AbortSignal,
+				onDelta?: (delta: { kind: "text" | "thinking" | "tool"; delta: string }) => void,
+			) => {
+				if (emitThinking) onDelta?.({ kind: "thinking", delta: "private reasoning" });
+				onDelta?.({ kind: "text", delta: "Review" });
+				return "Review complete";
+			},
+			completeJson: async <T>(
+				_system: string,
+				_user: string,
+				_signal?: AbortSignal,
+				onDelta?: (delta: { kind: "text" | "thinking" | "tool"; delta: string }) => void,
+			) => {
+				if (emitThinking) onDelta?.({ kind: "thinking", delta: "private reasoning" });
+				onDelta?.({ kind: "text", delta: "JSON" });
 				jsonCall++;
 				return (jsonCall === 1 ? { findings } : { analyses }) as T;
 			},
@@ -97,20 +114,45 @@ async function run(findings: Finding[], analyses: BugAnalysis[] = [], linearFail
 	return { state, appliedDecision, telemetry };
 }
 
-test("a non-edge bug requests changes even when the model tries to defer it", async () => {
-	const result = await run([finding("bug")], [
-		{
-			findingId: "finding-1",
-			impactsAcceptanceCriteria: false,
-			isEdgeCase: false,
-			disposition: "deferred",
-			reasoning: "Model attempted to defer a normal-path bug.",
-		},
-	]);
+test("a non-edge bug can approve when it does not directly block merge", async () => {
+	const result = await run(
+		[finding("bug")],
+		[
+			{
+				findingId: "finding-1",
+				impactsAcceptanceCriteria: false,
+				isEdgeCase: false,
+				directlyBlocksMerge: false,
+				mergeImpact: "non-blocking",
+				reasoning: "The bug is real but does not prevent a safe merge.",
+			},
+		],
+	);
+	assert.equal(result.appliedDecision?.event, "APPROVE");
+	assert.deepEqual(result.state.decision?.blockingFindingIds, []);
+	assert.equal(result.state.loggedTickets.length, 0);
+	assert.ok(result.telemetry.some((event) => event.type === "stage_started" && event.stage === "review"));
+	assert.ok(result.telemetry.some((event) => event.type === "model_delta" && event.stage === "review"));
+	assert.ok(result.telemetry.some((event) => event.type === "model_delta" && event.stage === "classify"));
+	assert.ok(result.telemetry.some((event) => event.type === "stage_completed" && event.stage === "apply"));
+});
+
+test("a directly merge-blocking bug requests changes", async () => {
+	const result = await run(
+		[finding("bug")],
+		[
+			{
+				findingId: "finding-1",
+				impactsAcceptanceCriteria: true,
+				isEdgeCase: false,
+				directlyBlocksMerge: true,
+				mergeImpact: "blocking",
+				reasoning: "Invalid orders are accepted, directly failing the acceptance criteria.",
+			},
+		],
+	);
 	assert.equal(result.appliedDecision?.event, "REQUEST_CHANGES");
 	assert.deepEqual(result.state.decision?.blockingFindingIds, ["finding-1"]);
-	assert.ok(result.telemetry.some((event) => event.type === "stage_started" && event.stage === "review"));
-	assert.ok(result.telemetry.some((event) => event.type === "stage_completed" && event.stage === "apply"));
 });
 
 test("nice-to-have and nit findings approve with comments", async () => {
@@ -128,7 +170,8 @@ test("a bounded edge-case bug is tracked in Linear before approval", async () =>
 		impactsAcceptanceCriteria: false,
 		isEdgeCase: true,
 		edgeCaseDefinition: "Only occurs when an already-expired cart token is replayed after checkout completes.",
-		disposition: "deferred",
+		directlyBlocksMerge: false,
+		mergeImpact: "follow-up",
 		reasoning: "Primary checkout behavior remains correct and the follow-up is bounded.",
 	};
 	const result = await run([finding("bug")], [analysis]);
@@ -136,7 +179,7 @@ test("a bounded edge-case bug is tracked in Linear before approval", async () =>
 	assert.equal(result.state.loggedTickets[0]?.identifier, "ENG-99");
 });
 
-test("a deferred bug fails closed when Linear ticket creation fails", async () => {
+test("a follow-up bug still approves when Linear ticket creation fails", async () => {
 	const result = await run(
 		[finding("bug")],
 		[
@@ -145,12 +188,29 @@ test("a deferred bug fails closed when Linear ticket creation fails", async () =
 				impactsAcceptanceCriteria: false,
 				isEdgeCase: true,
 				edgeCaseDefinition: "Only occurs for a replayed expired cart token.",
-				disposition: "deferred",
+				directlyBlocksMerge: false,
+				mergeImpact: "follow-up",
 				reasoning: "Bounded, if tracked.",
 			},
 		],
 		"Linear unavailable",
 	);
-	assert.equal(result.appliedDecision?.event, "REQUEST_CHANGES");
+	assert.equal(result.appliedDecision?.event, "APPROVE");
 	assert.match(result.state.loggedTickets[0]?.error ?? "", /Linear unavailable/);
+});
+
+test("model thinking deltas are omitted from dashboard telemetry", async () => {
+	const result = await run([], [], undefined, true);
+	const modelDeltas = result.telemetry.filter((event) => event.type === "model_delta");
+	assert.ok(modelDeltas.some((event) => event.data?.kind === "text"));
+	assert.equal(
+		modelDeltas.some((event) => event.data?.kind === "thinking"),
+		false,
+	);
+	assert.ok(
+		result.telemetry.some(
+			(event) =>
+				event.type === "stage_progress" && event.data?.kind === "thinking" && event.data?.streamPolicy === "omitted",
+		),
+	);
 });

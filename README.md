@@ -30,14 +30,14 @@ pi install git:github.com/curtisblanchette/pi-extensions
 
 ## Extensions at a glance
 
-| Extension | Commands | Best for |
-| --- | --- | --- |
-| [`commit-pr.ts`](./extensions/commit-pr.ts) | `/commit`, `/commit-pr` | Stage files, write a Conventional Commit, push a branch, and open a draft PR from one TUI. |
-| [`planning-agent/`](./extensions/planning-agent/) | `/implementation-plan`, `/planning-agent`, `/save-plan` | Run a read-only planner that produces engineering-ready implementation plans. |
-| [`technical-researcher/`](./extensions/technical-researcher/) | `/research`, `/technical-research`, `/save-research` | Run a separate read-only researcher that produces knowledgebase-ready technical research briefs. |
-| [`prs.ts`](./extensions/prs.ts) | `/prs` | Browse open PRs, inspect CI state, checkout branches, update descriptions, run review workflows, and explain failures. |
-| [`agentic-review/`](./extensions/agentic-review/) | `/agentic-review`, `/agentic-review-server`, `/agentic-review-watch`, `/agentic-review-ui`, `/agentic-review-model`, `/agentic-review-config` | Run and observe asynchronous LangGraph PR reviews with deterministic quality gates, configurable models, and Linear edge-case deferrals. |
-| [`sync-pr-labels.ts`](./extensions/sync-pr-labels.ts) | `/sync-pr-labels` | Normalize a repository's PR workflow labels to the approved label set. |
+| Extension                                                     | Commands                                                                                                                                      | Best for                                                                                                                                 |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`commit-pr.ts`](./extensions/commit-pr.ts)                   | `/commit`, `/commit-pr`                                                                                                                       | Stage files, write a Conventional Commit, push a branch, and open a draft PR from one TUI.                                               |
+| [`planning-agent/`](./extensions/planning-agent/)             | `/implementation-plan`, `/planning-agent`, `/save-plan`                                                                                       | Run a read-only planner that produces engineering-ready implementation plans.                                                            |
+| [`technical-researcher/`](./extensions/technical-researcher/) | `/research`, `/technical-research`, `/save-research`                                                                                          | Run a separate read-only researcher that produces knowledgebase-ready technical research briefs.                                         |
+| [`prs.ts`](./extensions/prs.ts)                               | `/prs`                                                                                                                                        | Browse open PRs, inspect CI state, checkout branches, update descriptions, run review workflows, and explain failures.                   |
+| [`agentic-review/`](./extensions/agentic-review/)             | `/agentic-review`, `/agentic-review-server`, `/agentic-review-watch`, `/agentic-review-ui`, `/agentic-review-model`, `/agentic-review-config` | Run and observe asynchronous LangGraph PR reviews with deterministic quality gates, configurable models, and Linear edge-case deferrals. |
+| [`sync-pr-labels.ts`](./extensions/sync-pr-labels.ts)         | `/sync-pr-labels`                                                                                                                             | Normalize a repository's PR workflow labels to the approved label set.                                                                   |
 
 ## Install
 
@@ -113,17 +113,19 @@ A terminal PR browser and action launcher inside pi.
 - Shows PR branch, author, updated time, URL, and CI/check status.
 - Keeps workflow labels fresh based on draft/review state where possible.
 - Checks out a selected PR branch locally.
+- Addresses unresolved review threads by pulling the PR branch, having the agent implement requested fixes and missing documentation, then replying with the pushed commit details and resolving each addressed thread.
 - Generates and lets you edit an AI-written PR description before updating GitHub.
 - Marks draft PRs ready for review.
-- Runs agentic review flows that propose inline comments, ask for approval, and post selected comments.
-- Explains failing GitHub Actions/check runs using the active pi model, with a fallback summary when model auth is unavailable.
+- Runs agentic review flows that let you deselect and confirm inline comments before posting, then submit either **Request Changes** or **Approve**; approvals can optionally add the `‼️ Merge with comments` label.
+- Explains failing GitHub Actions/check runs using the active pi model, with a fallback summary when model auth is unavailable, then—after explicit approval—checks out the PR branch for the agent to fix, verify, commit, and push.
 
 **Use cases**
 
 - You review several PRs per day and want a keyboard-first selector in pi.
 - You need to jump from a PR list to the branch locally without remembering `gh pr checkout` syntax.
+- Review comments need code or documentation updates and you want the agent to implement, verify, commit, push, and close the loop on GitHub.
 - A PR description is stale or empty and you want a diff/template-aware draft.
-- CI is red and you want a plain-English failure summary before digging into logs.
+- CI is red and you want a plain-English failure summary, then an approved fix-and-push workflow on the affected PR branch.
 - You want AI-suggested inline review comments but still approve every comment before posting.
 
 **Run**
@@ -166,15 +168,15 @@ A label normalization command for the PR workflow labels used by these extension
 
 **Approved workflow labels**
 
-| Label | Meaning |
-| --- | --- |
+| Label                    | Meaning                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------- |
 | `‼️ Merge with comments` | PR is approved, but contains comments that must be addressed before merging. |
-| `✅ Ready to merge` | PR is approved and ready for the author to merge. |
-| `👀 Ready for review` | PR is ready for review. |
-| `😭 Changes requested` | PR has been reviewed and updates are required. |
-| `🚫 Do not merge` | PR must not be merged, even if approved. |
-| `🛠️ Work in progress` | PR is under construction. |
-| `🧱 Blocked` | PR cannot be finalized until blocking work is completed. |
+| `✅ Ready to merge`      | PR is approved and ready for the author to merge.                            |
+| `👀 Ready for review`    | PR is ready for review.                                                      |
+| `😭 Changes requested`   | PR has been reviewed and updates are required.                               |
+| `🚫 Do not merge`        | PR must not be merged, even if approved.                                     |
+| `🛠️ Work in progress`    | PR is under construction.                                                    |
+| `🧱 Blocked`             | PR cannot be finalized until blocking work is completed.                     |
 
 **Use cases**
 
@@ -192,16 +194,19 @@ A label normalization command for the PR workflow labels used by these extension
 ## Development
 
 ```bash
-npm install
-npm run check
+corepack enable
+pnpm install
+pnpm check
+pnpm test
+pnpm format:check
 ```
 
 This package declares pi resources in `package.json`:
 
 ```json
 {
-  "pi": {
-    "extensions": ["./extensions"]
-  }
+	"pi": {
+		"extensions": ["./extensions"]
+	}
 }
 ```

@@ -1,0 +1,30 @@
+{
+	"name": "pi-extension-rag",
+	"private": true,
+	"version": "0.1.0",
+	"type": "module",
+	"description": "Project-local RAG over raw documents (Ollama + turbovec)",
+	"scripts": {
+		"clean": "echo 'nothing to clean'",
+		"build": "echo 'nothing to build'",
+		"check": "echo 'nothing to check'",
+		"mcp": "tsx src/mcp.ts"
+	},
+	"pi": {
+		"extensions": [
+			"./index.ts"
+		]
+	},
+	"dependencies": {
+		"@modelcontextprotocol/sdk": "^1.0.0",
+		"better-sqlite3": "^11.5.0",
+		"mammoth": "^1.8.0",
+		"pdf-parse": "^1.1.1",
+		"tsx": "^4.19.0",
+		"zod": "^3.23.8"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.11",
+		"@types/pdf-parse": "^1.1.4"
+	}
+}

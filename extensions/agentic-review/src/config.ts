@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { resolve } from "node:path";
+import { isAbsolute, relative, resolve } from "node:path";
 import type { Provider } from "./types.ts";
 import { PR_LABELS } from "./labels.ts";
 
@@ -45,6 +45,12 @@ export interface AgenticReviewConfig {
 		triggerLabel: string;
 		/** Optional repository selected in Settings, in owner/name form. */
 		repository?: string;
+		/** Optional PR author allowlist. Empty arrays allow all authors. */
+		authorAllowlist: {
+			users: string[];
+			organizations: string[];
+			teams: string[];
+		};
 		/** Runtime-only token read from GitHub CLI auth; always redacted from displayed configuration. */
 		accessToken?: string;
 	};
@@ -107,6 +113,11 @@ const DEFAULT_CONFIG: AgenticReviewConfig = {
 	},
 	github: {
 		triggerLabel: PR_LABELS.readyForReview,
+		authorAllowlist: {
+			users: [],
+			organizations: [],
+			teams: [],
+		},
 	},
 	linear: {
 		enabled: true,
@@ -117,15 +128,15 @@ const DEFAULT_CONFIG: AgenticReviewConfig = {
 	stateFile: ".pi/agentic-review-state.json",
 };
 
-export function loadConfig(cwd: string): LoadedConfig {
+export function loadConfig(cwd: string, projectTrusted = false): LoadedConfig {
 	const userPath = resolve(homedir(), ".pi/agent/agentic-review.json");
 	const projectPath = resolve(cwd, ".pi/agentic-review.json");
 	const loaded: string[] = [];
 	let merged: unknown = structuredClone(DEFAULT_CONFIG);
 
-	for (const path of [userPath, projectPath]) {
+	for (const path of [userPath, ...(projectTrusted ? [projectPath] : [])]) {
 		if (!existsSync(path)) continue;
-		const parsed = JSON.parse(readFileSync(path, "utf8"));
+		const parsed = parseConfigFile(path);
 		merged = deepMerge(merged, parsed);
 		loaded.push(path);
 	}
@@ -153,7 +164,9 @@ export function parseModelSpec(value: string): { provider: Provider; id: string 
 	const provider = normalizeProvider(rawProvider);
 	const id = idParts.join("/").trim();
 	if (!provider || !id) {
-		throw new Error("Model must use provider/model format: anthropic/<id>, openai/<id>, ollama/<id>, or llama.server/<id>");
+		throw new Error(
+			"Model must use provider/model format: anthropic/<id>, openai/<id>, ollama/<id>, or llama.server/<id>",
+		);
 	}
 	return { provider, id };
 }
@@ -215,8 +228,62 @@ function normalizeConfig(input: Partial<AgenticReviewConfig>, cwd: string): Agen
 	if (merged.github.repository && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(merged.github.repository)) {
 		throw new Error("agentic-review github.repository must use owner/name format");
 	}
-	merged.stateFile = resolve(cwd, merged.stateFile);
+	merged.github.authorAllowlist ??= { users: [], organizations: [], teams: [] };
+	merged.github.authorAllowlist.users = normalizeList(merged.github.authorAllowlist.users);
+	merged.github.authorAllowlist.organizations = normalizeList(merged.github.authorAllowlist.organizations);
+	merged.github.authorAllowlist.teams = normalizeList(merged.github.authorAllowlist.teams);
+	for (const team of merged.github.authorAllowlist.teams) {
+		if (!/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?$/.test(team)) {
+			throw new Error(
+				"agentic-review github.authorAllowlist.teams entries must use team-slug or owner/team-slug format",
+			);
+		}
+	}
+	if (merged.linear.enabled && !isTrustedLinearEndpoint(merged.linear.endpoint)) {
+		throw new Error("agentic-review linear.endpoint must be https://api.linear.app/graphql");
+	}
+	const stateFile = resolve(cwd, merged.stateFile);
+	const stateDirectory = resolve(cwd, ".pi");
+	const relativeStateFile = relative(stateDirectory, stateFile);
+	if (
+		relativeStateFile === "" ||
+		relativeStateFile === ".." ||
+		relativeStateFile.startsWith("../") ||
+		relativeStateFile.startsWith("..\\") ||
+		isAbsolute(relativeStateFile)
+	) {
+		throw new Error("agentic-review stateFile must stay within this project's .pi directory");
+	}
+	merged.stateFile = stateFile;
 	return merged;
+}
+
+function parseConfigFile(path: string): Record<string, unknown> {
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(readFileSync(path, "utf8"));
+	} catch (error) {
+		throw new Error(
+			`Could not parse agentic-review config ${path}: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+	if (!isPlainObject(parsed)) throw new Error(`Agentic-review config ${path} must contain a JSON object`);
+	return parsed;
+}
+
+function isTrustedLinearEndpoint(value: string): boolean {
+	try {
+		const url = new URL(value);
+		return (
+			url.protocol === "https:" &&
+			url.hostname === "api.linear.app" &&
+			url.pathname === "/graphql" &&
+			!url.username &&
+			!url.password
+		);
+	} catch {
+		return false;
+	}
 }
 
 function envOverrides(): unknown {
@@ -260,6 +327,11 @@ function envOverrides(): unknown {
 		}),
 		github: compactObject({
 			repository: process.env.AGENTIC_REVIEW_GITHUB_REPOSITORY?.trim(),
+			authorAllowlist: compactObject({
+				users: parseList(process.env.AGENTIC_REVIEW_ALLOWED_AUTHOR_USERS),
+				organizations: parseList(process.env.AGENTIC_REVIEW_ALLOWED_AUTHOR_ORGS),
+				teams: parseList(process.env.AGENTIC_REVIEW_ALLOWED_AUTHOR_TEAMS),
+			}),
 		}),
 		linear: compactObject({
 			enabled: parseBoolean(process.env.AGENTIC_REVIEW_LINEAR_ENABLED),
@@ -300,7 +372,11 @@ function parseNumber(value: string | undefined): number | undefined {
 
 function parseList(value: string | undefined): string[] | undefined {
 	if (value === undefined) return undefined;
-	return value.split(",").map((item) => item.trim()).filter(Boolean);
+	return normalizeList(value.split(","));
+}
+
+function normalizeList(value: unknown): string[] {
+	return Array.isArray(value) ? [...new Set(value.map((item) => String(item).trim()).filter(Boolean))] : [];
 }
 
 function compactObject(input: Record<string, unknown>): Record<string, unknown> {
@@ -315,6 +391,9 @@ function deepMerge(base: unknown, override: unknown): unknown {
 	if (!isPlainObject(base) || !isPlainObject(override)) return override === undefined ? base : override;
 	const merged: Record<string, unknown> = { ...(base as Record<string, unknown>) };
 	for (const [key, value] of Object.entries(override as Record<string, unknown>)) {
+		if (key === "__proto__" || key === "constructor" || key === "prototype") {
+			throw new Error(`Unsafe key in agentic-review configuration: ${key}`);
+		}
 		merged[key] = isPlainObject(value) && isPlainObject(merged[key]) ? deepMerge(merged[key], value) : value;
 	}
 	return merged;

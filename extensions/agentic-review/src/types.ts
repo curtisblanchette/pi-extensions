@@ -54,6 +54,8 @@ export interface PrContext {
 	changedFiles: Array<{ path: string; additions?: number; deletions?: number }>;
 	diff: string;
 	existingComments: ExistingReviewComment[];
+	/** Applicable AGENTS.md files and policy documents fetched from the PR head. */
+	reviewGuidance?: Array<{ path: string; content: string }>;
 	linkedIssue?: LinkedIssue;
 }
 
@@ -83,12 +85,19 @@ export interface Finding {
 	suggestion?: string;
 }
 
+export type MergeImpact = "blocking" | "non-blocking" | "follow-up";
+
 export interface BugAnalysis {
 	findingId: string;
 	impactsAcceptanceCriteria: boolean;
 	isEdgeCase: boolean;
 	edgeCaseDefinition?: string;
-	disposition: "critical" | "deferred";
+	/** Whether this bug concretely prevents a safe merge. */
+	directlyBlocksMerge: boolean;
+	/** Merge disposition for this bug. A bug is not automatically merge-blocking. */
+	mergeImpact: MergeImpact;
+	/** Legacy alias retained for older dashboard data and model responses. */
+	disposition?: "critical" | "deferred";
 	reasoning: string;
 }
 

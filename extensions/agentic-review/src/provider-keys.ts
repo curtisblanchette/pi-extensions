@@ -51,7 +51,9 @@ export class ProviderKeyStore {
 			const parsed = JSON.parse(readFileSync(this.path, "utf8")) as StoredProviderKeys;
 			return parsed.version === 1 ? parsed : { version: 1 };
 		} catch (error) {
-			throw new Error(`Could not read provider keys ${this.path}: ${error instanceof Error ? error.message : String(error)}`);
+			throw new Error(
+				`Could not read provider keys ${this.path}: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 

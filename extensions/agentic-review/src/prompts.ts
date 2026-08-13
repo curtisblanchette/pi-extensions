@@ -4,7 +4,12 @@ import type { Finding, PrContext } from "./types.ts";
 
 export { AGENTIC_REVIEW_SYSTEM_PROMPT };
 
-export function buildReviewUserPrompt(pr: PrContext, diffChunk: string, chunkIndex: number, totalChunks: number): string {
+export function buildReviewUserPrompt(
+	pr: PrContext,
+	diffChunk: string,
+	chunkIndex: number,
+	totalChunks: number,
+): string {
 	return [
 		`Agentic review PR #${pr.number}: ${pr.title}`,
 		"",
@@ -24,7 +29,13 @@ export function buildReviewUserPrompt(pr: PrContext, diffChunk: string, chunkInd
 		formatExistingComments(pr.existingComments),
 		"",
 		"Changed files:",
-		pr.changedFiles.map((file) => `- ${file.path} (+${file.additions ?? 0}/-${file.deletions ?? 0})`).join("\n") || "(none)",
+		pr.changedFiles.map((file) => `- ${file.path} (+${file.additions ?? 0}/-${file.deletions ?? 0})`).join("\n") ||
+			"(none)",
+		"",
+		"Applicable repository guidance fetched from the PR head:",
+		pr.reviewGuidance?.length
+			? pr.reviewGuidance.map((entry) => `### ${entry.path}\n${entry.content}`).join("\n\n")
+			: "(No applicable AGENTS.md or referenced Markdown policy documents were found.)",
 		"",
 		"Review only the unified-diff chunk below. Other chunks are reviewed independently.",
 		"Use new/right-side line numbers for inline candidates.",
@@ -72,7 +83,7 @@ export function buildQualityGatePrompt(pr: PrContext, reviewText: string): strin
 			2,
 		),
 		"",
-		"If the review found no actionable issues, return {\"findings\":[]}.",
+		'If the review found no actionable issues, return {"findings":[]}.',
 		"",
 		"Review to classify:",
 		reviewText,
@@ -80,15 +91,17 @@ export function buildQualityGatePrompt(pr: PrContext, reviewText: string): strin
 }
 
 export const BUG_ANALYSIS_SYSTEM_PROMPT = [
-	"You analyze confirmed pull request bugs against acceptance criteria.",
+	"You analyze confirmed pull request bugs against acceptance criteria and decide merge impact.",
 	"Return strict JSON only.",
+	"Default to non-blocking unless there is concrete evidence the PR cannot safely merge.",
+	"A concrete bug is not automatically merge-blocking.",
 	"For every bug:",
 	"- Determine whether it affects an explicit or reasonably inferred acceptance criterion.",
 	"- Determine whether the failure requires an unusual boundary, rare environment, invalid input, race, scale threshold, or other clearly defined edge condition.",
-	"- A non-edge-case bug is always critical for this review and cannot be deferred.",
-	"- An edge-case bug is critical when it risks security/privacy, data loss/corruption, outage, contractual/API breakage, or prevents an acceptance criterion.",
-	"- An edge-case bug may be deferred only when the primary acceptance criteria still hold, impact is bounded, and the edge condition is explicitly defined and safe to track separately.",
-	"- Never defer merely because a fix is inconvenient.",
+	"- Set mergeImpact=blocking only when the issue directly blocks safe merge: happy-path feature is unusable, explicit acceptance criterion clearly fails, build/type/tests fail, security/privacy/data loss/outage risk, or API/contract breakage without migration.",
+	"- Set mergeImpact=follow-up when the bug is real and worth durable tracking, but it does not directly block safe merge.",
+	"- Set mergeImpact=non-blocking when an inline review comment is enough and no durable follow-up is required.",
+	"- Never mark blocking merely because a fix is inconvenient or because the behavior is imperfect.",
 ].join("\n");
 
 export function buildBugAnalysisPrompt(pr: PrContext, bugs: Finding[]): string {
@@ -111,8 +124,9 @@ export function buildBugAnalysisPrompt(pr: PrContext, bugs: Finding[]): string {
 						impactsAcceptanceCriteria: true,
 						isEdgeCase: false,
 						edgeCaseDefinition: "omit unless isEdgeCase=true",
-						disposition: "critical|deferred",
-						reasoning: "why this must block or can safely be deferred",
+						directlyBlocksMerge: false,
+						mergeImpact: "blocking|non-blocking|follow-up",
+						reasoning: "why this is or is not directly merge-blocking",
 					},
 				],
 			},

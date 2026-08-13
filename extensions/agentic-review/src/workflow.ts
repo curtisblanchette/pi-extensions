@@ -22,12 +22,23 @@ export async function runReviewWorkflow(
 	prNumber: number,
 	options: RunWorkflowOptions = {},
 ): Promise<WorkflowResult> {
+	options.signal?.throwIfAborted?.();
 	const repo = await getActiveRepo(pi, ctx.cwd, config.github.repository);
 	const github = new GitHubClient(pi, ctx.cwd, repo, config.github.accessToken);
 	await github.ensureAvailable();
 	const pr = await github.getPullRequest(prNumber);
+	options.signal?.throwIfAborted?.();
 	if (pr.isDraft) throw new Error(`PR #${prNumber} is still a draft`);
 	if (!pr.headSha) throw new Error(`Could not resolve head SHA for PR #${prNumber}`);
+	const authorAllowlist = await github.checkAuthorAllowlist(pr.author, config.github.authorAllowlist);
+	options.signal?.throwIfAborted?.();
+	if (!authorAllowlist.allowed) {
+		return skippedWorkflowResult(
+			prNumber,
+			pr.headSha,
+			authorAllowlist.reason ?? `PR author @${pr.author ?? "unknown"} is not allowed`,
+		);
+	}
 
 	const previousReview = config.dryRun ? undefined : await github.getPreviousAgenticReviewStatus(prNumber);
 	if (previousReview?.unresolvedThreadCount) {
@@ -43,6 +54,7 @@ export async function runReviewWorkflow(
 	}
 
 	const model = await resolveReviewModel(pi, ctx, config);
+	options.signal?.throwIfAborted?.();
 	options.onTelemetry?.({
 		type: "log",
 		message: `Resolved model ${model.provider}/${model.id}`,
@@ -59,9 +71,11 @@ export async function runReviewWorkflow(
 		onTelemetry: options.onTelemetry,
 	});
 	const state = await graph.invoke({ prNumber });
+	options.signal?.throwIfAborted?.();
 	const contextHeadSha = state.context?.headSha ?? pr.headSha;
 	if (!state.decision) throw new Error("Agentic-review workflow completed without a quality-gate decision");
 	if (!config.dryRun && state.applied?.reviewSubmitted) {
+		options.signal?.throwIfAborted?.();
 		await store.record(repo, prNumber, contextHeadSha, state.decision);
 	}
 

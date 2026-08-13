@@ -42,7 +42,9 @@ export class ReviewStateStore {
 			const parsed = JSON.parse(await readFile(this.path, "utf8")) as PersistedState;
 			return parsed.version === 1 && parsed.reviews ? parsed : { version: 1, reviews: {} };
 		} catch (error) {
-			throw new Error(`Failed to read agentic-review state ${this.path}: ${error instanceof Error ? error.message : String(error)}`);
+			throw new Error(
+				`Failed to read agentic-review state ${this.path}: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 }
