@@ -1,9 +1,4 @@
-import type {
-	BeginRunInput,
-	WatcherStatus,
-	WorkflowRunSnapshot,
-	WorkflowTelemetryEvent,
-} from "./telemetry.ts";
+import type { BeginRunInput, WatcherStatus, WorkflowRunSnapshot, WorkflowTelemetryEvent } from "./telemetry.ts";
 import type { WorkflowResult } from "./types.ts";
 
 type DashboardSubscriber = (run: WorkflowRunSnapshot) => void;
@@ -114,9 +109,7 @@ export class WorkflowDashboard {
 	}
 
 	list(): WorkflowRunSnapshot[] {
-		return [...this.runs.values()]
-			.sort((a, b) => b.startedAt.localeCompare(a.startedAt))
-			.map(clone);
+		return [...this.runs.values()].sort((a, b) => b.startedAt.localeCompare(a.startedAt)).map(clone);
 	}
 
 	get(id: string): WorkflowRunSnapshot | undefined {

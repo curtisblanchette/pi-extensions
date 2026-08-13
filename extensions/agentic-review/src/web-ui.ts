@@ -85,7 +85,10 @@ export class AgenticReviewWebUi {
 			const url = new URL(request.url ?? "/", this.url ?? `http://${HOST}`);
 			if (method === "GET") {
 				if (url.pathname === "/") {
-					this.html(response, DASHBOARD_HTML.replace("__AGENTIC_REVIEW_REQUEST_TOKEN__", JSON.stringify(this.requestToken)));
+					this.html(
+						response,
+						DASHBOARD_HTML.replace("__AGENTIC_REVIEW_REQUEST_TOKEN__", JSON.stringify(this.requestToken)),
+					);
 					return;
 				}
 				if (url.pathname === "/api/health") {
@@ -241,7 +244,8 @@ export class AgenticReviewWebUi {
 			"Content-Type": "text/html; charset=utf-8",
 			"Content-Length": Buffer.byteLength(body),
 			"Cache-Control": "no-store",
-			"Content-Security-Policy": "default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
+			"Content-Security-Policy":
+				"default-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'",
 			"X-Content-Type-Options": "nosniff",
 			"X-Frame-Options": "DENY",
 			"Referrer-Policy": "no-referrer",
@@ -265,13 +269,20 @@ function isRequestForThisServer(request: IncomingMessage, port: number | undefin
 	return Boolean(port) && request.headers.host === `${HOST}:${port}`;
 }
 
-function isAuthorizedMutation(request: IncomingMessage, origin: string | undefined, token: string | undefined): boolean {
-	return Boolean(origin && token) && request.headers.origin === origin && request.headers["x-agentic-review-token"] === token;
+function isAuthorizedMutation(
+	request: IncomingMessage,
+	origin: string | undefined,
+	token: string | undefined,
+): boolean {
+	return (
+		Boolean(origin && token) && request.headers.origin === origin && request.headers["x-agentic-review-token"] === token
+	);
 }
 
 async function readJsonBody(request: IncomingMessage): Promise<Record<string, unknown>> {
 	const contentType = request.headers["content-type"] ?? "";
-	if (!contentType.toLowerCase().startsWith("application/json")) throw new Error("Settings requests require application/json");
+	if (!contentType.toLowerCase().startsWith("application/json"))
+		throw new Error("Settings requests require application/json");
 	let body = "";
 	for await (const chunk of request) {
 		body += chunk.toString();
@@ -279,7 +290,8 @@ async function readJsonBody(request: IncomingMessage): Promise<Record<string, un
 	}
 	if (!body.trim()) return {};
 	const parsed = JSON.parse(body);
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Settings request body must be a JSON object");
+	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+		throw new Error("Settings request body must be a JSON object");
 	return parsed as Record<string, unknown>;
 }
 

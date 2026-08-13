@@ -20,14 +20,14 @@ The agentic review node shares the exact reviewer instruction source used by the
 
 ### Gate policy
 
-| Findings | GitHub review |
-| --- | --- |
-| Any critical finding | Request changes |
-| Bug analysis says the issue directly blocks a safe merge | Request changes |
-| Non-blocking bug marked for follow-up | Approve with comments; create a Linear follow-up when available |
-| Non-blocking bug that only needs review context | Approve with comments |
-| Only nice-to-haves and/or nits | Approve with comments |
-| No findings | Approve |
+| Findings                                                 | GitHub review                                                   |
+| -------------------------------------------------------- | --------------------------------------------------------------- |
+| Any critical finding                                     | Request changes                                                 |
+| Bug analysis says the issue directly blocks a safe merge | Request changes                                                 |
+| Non-blocking bug marked for follow-up                    | Approve with comments; create a Linear follow-up when available |
+| Non-blocking bug that only needs review context          | Approve with comments                                           |
+| Only nice-to-haves and/or nits                           | Approve with comments                                           |
+| No findings                                              | Approve                                                         |
 
 The extension does **not** create, remove, or update outcome labels. Repository auto-labelling workflows are expected to translate the submitted `APPROVE` or `REQUEST_CHANGES` review into labels such as `‼️ Merge with comments`, `✅ Ready to merge`, or `😭 Changes requested`.
 
@@ -195,13 +195,13 @@ Set `github.authorAllowlist` to restrict automated reviews to trusted PR authors
 
 ```json
 {
-  "github": {
-    "authorAllowlist": {
-      "users": [],
-      "organizations": ["metalabdesign"],
-      "teams": []
-    }
-  }
+	"github": {
+		"authorAllowlist": {
+			"users": [],
+			"organizations": ["metalabdesign"],
+			"teams": []
+		}
+	}
 }
 ```
 
@@ -209,13 +209,13 @@ For a specific GitHub team, use a team slug. Bare team slugs resolve under the r
 
 ```json
 {
-  "github": {
-    "authorAllowlist": {
-      "users": [],
-      "organizations": [],
-      "teams": ["metalabdesign/engineering"]
-    }
-  }
+	"github": {
+		"authorAllowlist": {
+			"users": [],
+			"organizations": [],
+			"teams": ["metalabdesign/engineering"]
+		}
+	}
 }
 ```
 
@@ -235,49 +235,49 @@ Example project config:
 
 ```json
 {
-  "polling": {
-    "enabled": true,
-    "intervalMs": 180000
-  },
-  "webUi": {
-    "enabled": true,
-    "port": 4317,
-    "openOnStart": false,
-    "maxRuns": 100
-  },
-  "model": {
-    "provider": "ollama",
-    "id": "qwen3.6:latest",
-    "temperature": 0.1,
-    "maxTokens": 8192,
-    "ollama": {
-      "baseUrl": "http://127.0.0.1:11434/v1",
-      "apiKey": "ollama",
-      "contextWindow": 262144
-    }
-  },
-  "review": {
-    "maxDiffCharsPerChunk": 60000,
-    "maxChunks": 20,
-    "postInlineComments": true
-  },
-  "github": {
-    "triggerLabel": "👀 Ready for review",
-    "repository": "optional-owner/repository",
-    "authorAllowlist": {
-      "users": [],
-      "organizations": ["metalabdesign"],
-      "teams": []
-    }
-  },
-  "linear": {
-    "enabled": true,
-    "team": "ENG",
-    "projectId": "optional-linear-project-uuid",
-    "labelIds": []
-  },
-  "dryRun": false,
-  "stateFile": ".pi/agentic-review-state.json"
+	"polling": {
+		"enabled": true,
+		"intervalMs": 180000
+	},
+	"webUi": {
+		"enabled": true,
+		"port": 4317,
+		"openOnStart": false,
+		"maxRuns": 100
+	},
+	"model": {
+		"provider": "ollama",
+		"id": "qwen3.6:latest",
+		"temperature": 0.1,
+		"maxTokens": 8192,
+		"ollama": {
+			"baseUrl": "http://127.0.0.1:11434/v1",
+			"apiKey": "ollama",
+			"contextWindow": 262144
+		}
+	},
+	"review": {
+		"maxDiffCharsPerChunk": 60000,
+		"maxChunks": 20,
+		"postInlineComments": true
+	},
+	"github": {
+		"triggerLabel": "👀 Ready for review",
+		"repository": "optional-owner/repository",
+		"authorAllowlist": {
+			"users": [],
+			"organizations": ["metalabdesign"],
+			"teams": []
+		}
+	},
+	"linear": {
+		"enabled": true,
+		"team": "ENG",
+		"projectId": "optional-linear-project-uuid",
+		"labelIds": []
+	},
+	"dryRun": false,
+	"stateFile": ".pi/agentic-review-state.json"
 }
 ```
 
@@ -308,16 +308,16 @@ Persistently target the local Qwen 3.6 model with `~/.pi/agent/agentic-review.js
 
 ```json
 {
-  "model": {
-    "provider": "ollama",
-    "id": "qwen3.6:latest",
-    "maxTokens": 8192,
-    "ollama": {
-      "baseUrl": "http://127.0.0.1:11434/v1",
-      "apiKey": "ollama",
-      "contextWindow": 262144
-    }
-  }
+	"model": {
+		"provider": "ollama",
+		"id": "qwen3.6:latest",
+		"maxTokens": 8192,
+		"ollama": {
+			"baseUrl": "http://127.0.0.1:11434/v1",
+			"apiKey": "ollama",
+			"contextWindow": 262144
+		}
+	}
 }
 ```
 
@@ -335,10 +335,10 @@ Use any Anthropic model present in pi's model registry:
 
 ```json
 {
-  "model": {
-    "provider": "anthropic",
-    "id": "claude-sonnet-4-5"
-  }
+	"model": {
+		"provider": "anthropic",
+		"id": "claude-sonnet-4-5"
+	}
 }
 ```
 
@@ -348,10 +348,10 @@ Authentication comes from the review-specific Settings key, then pi (`~/.pi/agen
 
 ```json
 {
-  "model": {
-    "provider": "openai",
-    "id": "gpt-5"
-  }
+	"model": {
+		"provider": "openai",
+		"id": "gpt-5"
+	}
 }
 ```
 
@@ -363,16 +363,16 @@ For llama.cpp `llama-server`, LM Studio, vLLM, or another OpenAI-compatible loca
 
 ```json
 {
-  "model": {
-    "provider": "llama-server",
-    "id": "qwen3-coder",
-    "maxTokens": 8192,
-    "llamaServer": {
-      "baseUrl": "http://127.0.0.1:8080/v1",
-      "apiKey": "local",
-      "contextWindow": 131072
-    }
-  }
+	"model": {
+		"provider": "llama-server",
+		"id": "qwen3-coder",
+		"maxTokens": 8192,
+		"llamaServer": {
+			"baseUrl": "http://127.0.0.1:8080/v1",
+			"apiKey": "local",
+			"contextWindow": 131072
+		}
+	}
 }
 ```
 
@@ -403,44 +403,45 @@ If a bug is marked as a non-blocking `follow-up`, the workflow attempts to creat
 
 ## Environment variables
 
-| Variable | Purpose |
-| --- | --- |
-| `AGENTIC_REVIEW_ENABLED` | Enable/disable polling |
-| `AGENTIC_REVIEW_POLL_INTERVAL_MS` | Poll interval (minimum 15000) |
-| `AGENTIC_REVIEW_UI_ENABLED` | Start the observer with the pi session |
-| `AGENTIC_REVIEW_UI_PORT` | Preferred loopback port (`0` for ephemeral) |
-| `AGENTIC_REVIEW_UI_OPEN_ON_START` | Open a browser after automatic startup |
-| `AGENTIC_REVIEW_UI_MAX_RUNS` | In-memory run retention (10–1000) |
-| `AGENTIC_REVIEW_GITHUB_REPOSITORY` | Repository override in `owner/name` format |
-| `AGENTIC_REVIEW_ALLOWED_AUTHOR_USERS` | Comma-separated GitHub usernames allowed to trigger reviews |
-| `AGENTIC_REVIEW_ALLOWED_AUTHOR_ORGS` | Comma-separated GitHub orgs whose members may trigger reviews |
-| `AGENTIC_REVIEW_ALLOWED_AUTHOR_TEAMS` | Comma-separated GitHub teams (`team-slug` or `org/team-slug`) whose members may trigger reviews |
-| `AGENTIC_REVIEW_MODEL` | `provider/model` |
-| `AGENTIC_REVIEW_PROVIDER` / `AGENTIC_REVIEW_MODEL_ID` | Separate model selector |
-| `AGENTIC_REVIEW_TEMPERATURE` | Model temperature |
-| `AGENTIC_REVIEW_MAX_TOKENS` | Completion limit |
-| `OLLAMA_BASE_URL` / `OLLAMA_URL` | Ollama OpenAI-compatible base URL |
-| `OLLAMA_API_KEY` | Optional Ollama placeholder key |
-| `OLLAMA_CONTEXT_WINDOW` | Registered Ollama model context size |
-| `AGENTIC_REVIEW_DIFF_CHUNK_CHARS` | Maximum characters per review pass |
-| `AGENTIC_REVIEW_MAX_DIFF_CHUNKS` | Fail-closed chunk limit |
-| `AGENTIC_REVIEW_POST_INLINE_COMMENTS` | Enable inline suggestion comments |
-| `AGENTIC_REVIEW_DRY_RUN` | Run graph without GitHub/Linear writes |
-| `LLAMA_SERVER_URL` | OpenAI-compatible base URL |
-| `LLAMA_SERVER_API_KEY` | Optional local-server key |
-| `LLAMA_SERVER_CONTEXT_WINDOW` | Registered local model context size |
-| `LINEAR_API_KEY` | Linear personal/API key |
-| `AGENTIC_REVIEW_LINEAR_ENABLED` | Enable/disable Linear integration |
-| `AGENTIC_REVIEW_LINEAR_TEAM` | Team UUID/key/name |
-| `AGENTIC_REVIEW_LINEAR_PROJECT_ID` | Project UUID for follow-ups |
-| `AGENTIC_REVIEW_LINEAR_LABEL_IDS` | Comma-separated label UUIDs |
+| Variable                                              | Purpose                                                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `AGENTIC_REVIEW_ENABLED`                              | Enable/disable polling                                                                          |
+| `AGENTIC_REVIEW_POLL_INTERVAL_MS`                     | Poll interval (minimum 15000)                                                                   |
+| `AGENTIC_REVIEW_UI_ENABLED`                           | Start the observer with the pi session                                                          |
+| `AGENTIC_REVIEW_UI_PORT`                              | Preferred loopback port (`0` for ephemeral)                                                     |
+| `AGENTIC_REVIEW_UI_OPEN_ON_START`                     | Open a browser after automatic startup                                                          |
+| `AGENTIC_REVIEW_UI_MAX_RUNS`                          | In-memory run retention (10–1000)                                                               |
+| `AGENTIC_REVIEW_GITHUB_REPOSITORY`                    | Repository override in `owner/name` format                                                      |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_USERS`                 | Comma-separated GitHub usernames allowed to trigger reviews                                     |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_ORGS`                  | Comma-separated GitHub orgs whose members may trigger reviews                                   |
+| `AGENTIC_REVIEW_ALLOWED_AUTHOR_TEAMS`                 | Comma-separated GitHub teams (`team-slug` or `org/team-slug`) whose members may trigger reviews |
+| `AGENTIC_REVIEW_MODEL`                                | `provider/model`                                                                                |
+| `AGENTIC_REVIEW_PROVIDER` / `AGENTIC_REVIEW_MODEL_ID` | Separate model selector                                                                         |
+| `AGENTIC_REVIEW_TEMPERATURE`                          | Model temperature                                                                               |
+| `AGENTIC_REVIEW_MAX_TOKENS`                           | Completion limit                                                                                |
+| `OLLAMA_BASE_URL` / `OLLAMA_URL`                      | Ollama OpenAI-compatible base URL                                                               |
+| `OLLAMA_API_KEY`                                      | Optional Ollama placeholder key                                                                 |
+| `OLLAMA_CONTEXT_WINDOW`                               | Registered Ollama model context size                                                            |
+| `AGENTIC_REVIEW_DIFF_CHUNK_CHARS`                     | Maximum characters per review pass                                                              |
+| `AGENTIC_REVIEW_MAX_DIFF_CHUNKS`                      | Fail-closed chunk limit                                                                         |
+| `AGENTIC_REVIEW_POST_INLINE_COMMENTS`                 | Enable inline suggestion comments                                                               |
+| `AGENTIC_REVIEW_DRY_RUN`                              | Run graph without GitHub/Linear writes                                                          |
+| `LLAMA_SERVER_URL`                                    | OpenAI-compatible base URL                                                                      |
+| `LLAMA_SERVER_API_KEY`                                | Optional local-server key                                                                       |
+| `LLAMA_SERVER_CONTEXT_WINDOW`                         | Registered local model context size                                                             |
+| `LINEAR_API_KEY`                                      | Linear personal/API key                                                                         |
+| `AGENTIC_REVIEW_LINEAR_ENABLED`                       | Enable/disable Linear integration                                                               |
+| `AGENTIC_REVIEW_LINEAR_TEAM`                          | Team UUID/key/name                                                                              |
+| `AGENTIC_REVIEW_LINEAR_PROJECT_ID`                    | Project UUID for follow-ups                                                                     |
+| `AGENTIC_REVIEW_LINEAR_LABEL_IDS`                     | Comma-separated label UUIDs                                                                     |
 
 ## Development
 
 From the repository root:
 
 ```bash
-npm install
-npm run check
-npm run test:agentic-review
+corepack enable
+pnpm install
+pnpm check
+pnpm test:agentic-review
 ```

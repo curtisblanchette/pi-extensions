@@ -163,7 +163,10 @@ export default function technicalResearcherExtension(pi: ExtensionAPI): void {
 			const defaultTarget = suggestKnowledgebaseResearchPath(ctx.cwd, artifact, state.lastResearchAt ?? Date.now());
 			if (!ctx.hasUI) {
 				if (!looksLikeKnowledgebaseRoot(ctx.cwd)) {
-					ctx.ui.notify("Provide a knowledgebase path: /save-research <path>. Current cwd is not obviously a vault/project knowledgebase.", "warning");
+					ctx.ui.notify(
+						"Provide a knowledgebase path: /save-research <path>. Current cwd is not obviously a vault/project knowledgebase.",
+						"warning",
+					);
 					return;
 				}
 				target = defaultTarget;
@@ -266,14 +269,16 @@ export default function technicalResearcherExtension(pi: ExtensionAPI): void {
 		if (MUTATION_TOOLS.has(event.toolName)) {
 			return {
 				block: true,
-				reason: "Technical Researcher is read-only. Produce the Markdown artifact in the response; use /save-research [path] to persist captured output.",
+				reason:
+					"Technical Researcher is read-only. Produce the Markdown artifact in the response; use /save-research [path] to persist captured output.",
 			};
 		}
 
 		if (event.toolName === "mcp" && !isAllowedMcpGatewayReadOnlyCall(event.input)) {
 			return {
 				block: true,
-				reason: "Technical Researcher allows MCP gateway calls only for discovery and read-only tool calls (get/list/search/query/read/fetch/etc.). MCP mutations remain blocked.",
+				reason:
+					"Technical Researcher allows MCP gateway calls only for discovery and read-only tool calls (get/list/search/query/read/fetch/etc.). MCP mutations remain blocked.",
 			};
 		}
 
@@ -304,7 +309,10 @@ export default function technicalResearcherExtension(pi: ExtensionAPI): void {
 		state = { ...state, lastResearchMarkdown: artifact, lastResearchAt: Date.now() };
 		persistState();
 		updateUi(ctx);
-		ctx.ui.notify("Captured technical research artifact. Use /save-research [path] to write it into the knowledgebase, or /research-off to exit research mode.", "info");
+		ctx.ui.notify(
+			"Captured technical research artifact. Use /save-research [path] to write it into the knowledgebase, or /research-off to exit research mode.",
+			"info",
+		);
 	});
 }
 
@@ -321,12 +329,18 @@ function buildResearchKickoffPrompt(userContext: string, cwd: string): string {
 	].join("\n");
 }
 
-const TECHNICAL_RESEARCHER_SYSTEM_CONTEXT = loadPromptFile(__dirname, "technical-researcher", "technical-researcher.md");
+const TECHNICAL_RESEARCHER_SYSTEM_CONTEXT = loadPromptFile(
+	__dirname,
+	"technical-researcher",
+	"technical-researcher.md",
+);
 
 function normalizeResearcherState(restored: Partial<ResearcherState>): ResearcherState {
 	return {
 		active: Boolean(restored.active),
-		baselineTools: Array.isArray(restored.baselineTools) ? restored.baselineTools.filter((name): name is string => typeof name === "string") : undefined,
+		baselineTools: Array.isArray(restored.baselineTools)
+			? restored.baselineTools.filter((name): name is string => typeof name === "string")
+			: undefined,
 		startedAt: restored.startedAt,
 		lastRequest: restored.lastRequest,
 		lastResearchMarkdown: restored.lastResearchMarkdown,
@@ -340,7 +354,14 @@ function suggestKnowledgebaseResearchPath(cwd: string, artifact: string, timesta
 	const slug = slugify(title.replace(/^Technical Research(?:\s+Brief)?:?/i, "").trim() || title);
 	const date = new Date(timestamp).toISOString().slice(0, 10);
 	const filename = `${date}-${slug || "technical-research"}.md`;
-	const preferredDirs = ["Research", "research", "docs/research", "docs/Research", "knowledgebase/research", "Knowledgebase/Research"];
+	const preferredDirs = [
+		"Research",
+		"research",
+		"docs/research",
+		"docs/Research",
+		"knowledgebase/research",
+		"Knowledgebase/Research",
+	];
 	const existing = preferredDirs.find((candidate) => existsSync(resolve(cwd, candidate)));
 	return existing ? `${existing}/${filename}` : `Research/${filename}`;
 }
@@ -348,7 +369,9 @@ function suggestKnowledgebaseResearchPath(cwd: string, artifact: string, timesta
 function looksLikeKnowledgebaseRoot(cwd: string): boolean {
 	const base = basename(cwd).toLowerCase();
 	if (/vault|knowledge|kb|wiki|notes|docs/.test(base)) return true;
-	return [".obsidian", "Projects", "projects", "Research", "research", "index.md", "README.md"].some((marker) => existsSync(resolve(cwd, marker)));
+	return [".obsidian", "Projects", "projects", "Research", "research", "index.md", "README.md"].some((marker) =>
+		existsSync(resolve(cwd, marker)),
+	);
 }
 
 function ensureMarkdownPath(path: string): string {

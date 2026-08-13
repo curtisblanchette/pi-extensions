@@ -164,7 +164,9 @@ export function parseModelSpec(value: string): { provider: Provider; id: string 
 	const provider = normalizeProvider(rawProvider);
 	const id = idParts.join("/").trim();
 	if (!provider || !id) {
-		throw new Error("Model must use provider/model format: anthropic/<id>, openai/<id>, ollama/<id>, or llama.server/<id>");
+		throw new Error(
+			"Model must use provider/model format: anthropic/<id>, openai/<id>, ollama/<id>, or llama.server/<id>",
+		);
 	}
 	return { provider, id };
 }
@@ -232,7 +234,9 @@ function normalizeConfig(input: Partial<AgenticReviewConfig>, cwd: string): Agen
 	merged.github.authorAllowlist.teams = normalizeList(merged.github.authorAllowlist.teams);
 	for (const team of merged.github.authorAllowlist.teams) {
 		if (!/^[A-Za-z0-9_.-]+(?:\/[A-Za-z0-9_.-]+)?$/.test(team)) {
-			throw new Error("agentic-review github.authorAllowlist.teams entries must use team-slug or owner/team-slug format");
+			throw new Error(
+				"agentic-review github.authorAllowlist.teams entries must use team-slug or owner/team-slug format",
+			);
 		}
 	}
 	if (merged.linear.enabled && !isTrustedLinearEndpoint(merged.linear.endpoint)) {
@@ -259,7 +263,9 @@ function parseConfigFile(path: string): Record<string, unknown> {
 	try {
 		parsed = JSON.parse(readFileSync(path, "utf8"));
 	} catch (error) {
-		throw new Error(`Could not parse agentic-review config ${path}: ${error instanceof Error ? error.message : String(error)}`);
+		throw new Error(
+			`Could not parse agentic-review config ${path}: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 	if (!isPlainObject(parsed)) throw new Error(`Agentic-review config ${path} must contain a JSON object`);
 	return parsed;
@@ -268,7 +274,13 @@ function parseConfigFile(path: string): Record<string, unknown> {
 function isTrustedLinearEndpoint(value: string): boolean {
 	try {
 		const url = new URL(value);
-		return url.protocol === "https:" && url.hostname === "api.linear.app" && url.pathname === "/graphql" && !url.username && !url.password;
+		return (
+			url.protocol === "https:" &&
+			url.hostname === "api.linear.app" &&
+			url.pathname === "/graphql" &&
+			!url.username &&
+			!url.password
+		);
 	} catch {
 		return false;
 	}

@@ -33,7 +33,11 @@ export async function runReviewWorkflow(
 	const authorAllowlist = await github.checkAuthorAllowlist(pr.author, config.github.authorAllowlist);
 	options.signal?.throwIfAborted?.();
 	if (!authorAllowlist.allowed) {
-		return skippedWorkflowResult(prNumber, pr.headSha, authorAllowlist.reason ?? `PR author @${pr.author ?? "unknown"} is not allowed`);
+		return skippedWorkflowResult(
+			prNumber,
+			pr.headSha,
+			authorAllowlist.reason ?? `PR author @${pr.author ?? "unknown"} is not allowed`,
+		);
 	}
 
 	const previousReview = config.dryRun ? undefined : await github.getPreviousAgenticReviewStatus(prNumber);

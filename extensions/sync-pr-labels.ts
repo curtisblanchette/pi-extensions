@@ -53,14 +53,18 @@ const PR_LABELS: GitHubLabel[] = [
 
 export default function syncPrLabelsExtension(pi: ExtensionAPI) {
 	pi.registerCommand("sync-pr-labels", {
-		description: "Create/update approved PR workflow labels; preserve other labels unless --prune is explicitly confirmed",
+		description:
+			"Create/update approved PR workflow labels; preserve other labels unless --prune is explicitly confirmed",
 		handler: async (args, ctx) => {
 			try {
 				await execOrThrow(pi, "gh", ["--version"], ctx.cwd, "GitHub CLI (gh) is required");
 				const repo = await getActiveRepo(pi, ctx.cwd);
 				const options = parseSyncOptions(args);
 				if (options.invalid) {
-					ctx.ui.notify("Usage: /sync-pr-labels [--yes] [--prune]. --prune requires --yes and an interactive confirmation.", "warning");
+					ctx.ui.notify(
+						"Usage: /sync-pr-labels [--yes] [--prune]. --prune requires --yes and an interactive confirmation.",
+						"warning",
+					);
 					return;
 				}
 
@@ -131,12 +135,23 @@ export function parseSyncOptions(args: string): { apply: boolean; prune: boolean
 }
 
 async function listLabels(pi: ExtensionAPI, ctx: ExtensionCommandContext, repo: GitHubRepo): Promise<GitHubLabel[]> {
-	const output = await ghApi(pi, ctx.cwd, repo, [`repos/${repo.owner}/${repo.name}/labels`, "--paginate", "--slurp"], "Failed to list labels");
+	const output = await ghApi(
+		pi,
+		ctx.cwd,
+		repo,
+		[`repos/${repo.owner}/${repo.name}/labels`, "--paginate", "--slurp"],
+		"Failed to list labels",
+	);
 	const parsed = JSON.parse(output);
 	return (Array.isArray(parsed[0]) ? parsed.flat() : parsed) as GitHubLabel[];
 }
 
-async function upsertLabel(pi: ExtensionAPI, ctx: ExtensionCommandContext, repo: GitHubRepo, label: GitHubLabel): Promise<void> {
+async function upsertLabel(
+	pi: ExtensionAPI,
+	ctx: ExtensionCommandContext,
+	repo: GitHubRepo,
+	label: GitHubLabel,
+): Promise<void> {
 	const args = [
 		"--method",
 		"PATCH",
@@ -174,12 +189,23 @@ async function upsertLabel(pi: ExtensionAPI, ctx: ExtensionCommandContext, repo:
 	);
 }
 
-async function deleteLabel(pi: ExtensionAPI, ctx: ExtensionCommandContext, repo: GitHubRepo, labelName: string): Promise<void> {
+async function deleteLabel(
+	pi: ExtensionAPI,
+	ctx: ExtensionCommandContext,
+	repo: GitHubRepo,
+	labelName: string,
+): Promise<void> {
 	await ghApi(
 		pi,
 		ctx.cwd,
 		repo,
-		["--method", "DELETE", `repos/${repo.owner}/${repo.name}/labels/${encodeURIComponent(labelName)}`, "-H", "Accept: application/vnd.github+json"],
+		[
+			"--method",
+			"DELETE",
+			`repos/${repo.owner}/${repo.name}/labels/${encodeURIComponent(labelName)}`,
+			"-H",
+			"Accept: application/vnd.github+json",
+		],
 		`Failed to delete label ${labelName}`,
 	);
 }
@@ -197,7 +223,12 @@ async function getActiveRepo(pi: ExtensionAPI, cwd: string): Promise<GitHubRepo>
 
 async function getRemotes(pi: ExtensionAPI, cwd: string): Promise<string[]> {
 	const result = await pi.exec("git", ["remote"], { cwd, timeout: 10_000 });
-	return result.code === 0 ? result.stdout.split("\n").map((remote) => remote.trim()).filter(Boolean) : [];
+	return result.code === 0
+		? result.stdout
+				.split("\n")
+				.map((remote) => remote.trim())
+				.filter(Boolean)
+		: [];
 }
 
 function parseGitHubRemote(url: string): GitHubRepo | undefined {
@@ -212,7 +243,13 @@ function parseGitHubRemote(url: string): GitHubRepo | undefined {
 	return { owner, name, host, nameWithOwner: `${owner}/${name}` };
 }
 
-async function ghApi(pi: ExtensionAPI, cwd: string, repo: GitHubRepo, args: string[], message?: string): Promise<string> {
+async function ghApi(
+	pi: ExtensionAPI,
+	cwd: string,
+	repo: GitHubRepo,
+	args: string[],
+	message?: string,
+): Promise<string> {
 	return execOrThrow(pi, "gh", ["api", ...ghHostArgs(repo), ...args], cwd, message);
 }
 
@@ -220,9 +257,16 @@ function ghHostArgs(repo: GitHubRepo): string[] {
 	return repo.host && repo.host !== "github.com" ? ["--hostname", repo.host] : [];
 }
 
-async function execOrThrow(pi: ExtensionAPI, command: string, args: string[], cwd: string, message?: string): Promise<string> {
+async function execOrThrow(
+	pi: ExtensionAPI,
+	command: string,
+	args: string[],
+	cwd: string,
+	message?: string,
+): Promise<string> {
 	const result = await pi.exec(command, args, { cwd, timeout: 60_000 });
-	if (result.code !== 0) throw new Error(`${message ?? `${command} ${args.join(" ")} failed`}\n${result.stderr || result.stdout}`.trim());
+	if (result.code !== 0)
+		throw new Error(`${message ?? `${command} ${args.join(" ")} failed`}\n${result.stderr || result.stdout}`.trim());
 	return result.stdout;
 }
 

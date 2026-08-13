@@ -122,7 +122,12 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 		if (pollInFlight) return;
 		if (ctx.isIdle && !ctx.isIdle()) return;
 		pollInFlight = true;
-		dashboard.setWatcherStatus({ polling: true, lastPollStartedAt: new Date().toISOString(), lastPollError: undefined, waitingFor: undefined });
+		dashboard.setWatcherStatus({
+			polling: true,
+			lastPollStartedAt: new Date().toISOString(),
+			lastPollError: undefined,
+			waitingFor: undefined,
+		});
 		try {
 			const repo = await getActiveRepo(pi, ctx.cwd, config.github.repository);
 			const github = new GitHubClient(pi, ctx.cwd, repo, config.github.accessToken);
@@ -130,7 +135,11 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 			const candidates = (await github.listOpenPullRequests()).filter(
 				(pr) => !pr.isDraft && pr.labels.includes(config.github.triggerLabel),
 			);
-			dashboard.setWatcherStatus({ repository: repo.nameWithOwner, candidateCount: candidates.length, waitingFor: undefined });
+			dashboard.setWatcherStatus({
+				repository: repo.nameWithOwner,
+				candidateCount: candidates.length,
+				waitingFor: undefined,
+			});
 			for (const pr of candidates) {
 				const reviewId = reviewKey(ctx, pr.number);
 				if (reviewsInFlight.has(reviewId)) continue;
@@ -156,7 +165,10 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 					if (isAbortError(error)) dashboard.fail(run.id, new Error("Review cancelled"));
 					else {
 						dashboard.fail(run.id, error);
-						ctx.ui.notify(`Agentic review failed for ${repo.nameWithOwner}#${pr.number}: ${formatError(error)}`, "error");
+						ctx.ui.notify(
+							`Agentic review failed for ${repo.nameWithOwner}#${pr.number}: ${formatError(error)}`,
+							"error",
+						);
 					}
 				} finally {
 					reviewsInFlight.delete(reviewId);
@@ -348,7 +360,10 @@ export default function agenticReviewExtension(pi: ExtensionAPI): void {
 				if (!value) {
 					const config = resolveConfig(ctx);
 					const model = await resolveReviewModel(pi, ctx, config);
-					ctx.ui.notify(`Agentic-review model: ${model.provider}/${model.id}${modelOverride ? " (session override)" : ""}`, "info");
+					ctx.ui.notify(
+						`Agentic-review model: ${model.provider}/${model.id}${modelOverride ? " (session override)" : ""}`,
+						"info",
+					);
 					return;
 				}
 				if (value.toLowerCase() === "current") {
@@ -422,7 +437,8 @@ async function openBrowser(pi: ExtensionAPI, cwd: string, url: string): Promise<
 	const command = process.platform === "darwin" ? "open" : process.platform === "win32" ? "cmd" : "xdg-open";
 	const args = process.platform === "win32" ? ["/c", "start", "", url] : [url];
 	const result = await pi.exec(command, args, { cwd, timeout: 10_000 });
-	if (result.code !== 0) throw new Error(`Could not open browser. Open ${url} manually.\n${result.stderr || result.stdout}`.trim());
+	if (result.code !== 0)
+		throw new Error(`Could not open browser. Open ${url} manually.\n${result.stderr || result.stdout}`.trim());
 }
 
 async function currentBranchPrNumber(
@@ -475,7 +491,8 @@ function truncateStatus(value: string): string {
 }
 
 function pollingReadiness(config: AgenticReviewConfig): { ready: boolean; message?: string } {
-	if (!config.github.accessToken) return { ready: false, message: "authenticate GitHub CLI with `gh auth login --scopes repo,read:org`" };
+	if (!config.github.accessToken)
+		return { ready: false, message: "authenticate GitHub CLI with `gh auth login --scopes repo,read:org`" };
 	if (!config.github.repository) return { ready: false, message: "select a GitHub repository in Settings" };
 	return { ready: true };
 }

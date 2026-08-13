@@ -23,7 +23,11 @@ test("Web UI exposes live run snapshots over loopback-only read APIs", async (t)
 	const url = await ui.start(0);
 	t.after(async () => {
 		await ui.stop();
-		await Promise.all([rm(githubPath, { force: true }), rm(providerPath, { force: true }), rm(settingsPath, { force: true })]);
+		await Promise.all([
+			rm(githubPath, { force: true }),
+			rm(providerPath, { force: true }),
+			rm(settingsPath, { force: true }),
+		]);
 	});
 
 	assert.match(url, /^http:\/\/127\.0\.0\.1:\d+$/);

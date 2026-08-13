@@ -34,21 +34,22 @@ Installed globally at `~/.pi/agent/extensions/rag/`, so every project gets it.
 
 ## Commands
 
-| Command              | What it does                                                                          |
-| -------------------- | ------------------------------------------------------------------------------------- |
-| `/rag-setup`         | First-run wizard: folder, formats, exclude, Ollama URL, model, chunk size, dim probe. |
+| Command              | What it does                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------- |
+| `/rag-setup`         | First-run wizard: folder, formats, exclude, Ollama URL, model, chunk size, dim probe.              |
 | `/rag-config`        | Settings menu — pick any single field to edit (folder, formats, exclude, URL, model, chunks, dim). |
-| `/rag-index`         | Scan + (re)index the configured folder. Hash-based incremental.                       |
-| `/rag-index --force` | Force re-embed every file regardless of hash.                                         |
-| `/rag <query>`       | Top-k semantic search, printed inline.                                                |
-| `/rag-status`        | Show config + index stats.                                                            |
-| `/rag-reset`         | Delete `.pi/rag/rag.db` and `.pi/rag/rag.tvim` (keeps config).                        |
+| `/rag-index`         | Scan + (re)index the configured folder. Hash-based incremental.                                    |
+| `/rag-index --force` | Force re-embed every file regardless of hash.                                                      |
+| `/rag <query>`       | Top-k semantic search, printed inline.                                                             |
+| `/rag-status`        | Show config + index stats.                                                                         |
+| `/rag-reset`         | Delete `.pi/rag/rag.db` and `.pi/rag/rag.tvim` (keeps config).                                     |
 
 ## Agent tool: `rag_search`
 
 The LLM can call this directly to ground answers in the project's documents.
 
 Parameters:
+
 - `query: string` — natural-language query
 - `k?: number` — top-k (default 8, max 30)
 - `formats?: string[]` — restrict to extensions, e.g. `[".pdf", ".md"]`
@@ -65,20 +66,20 @@ pi extension entrypoint:
 
 ```bash
 cd ~/.pi/agent/extensions/rag
-npm run mcp
+pnpm run mcp
 # or:
-npx tsx ~/.pi/agent/extensions/rag/src/mcp.ts
+pnpm exec tsx ~/.pi/agent/extensions/rag/src/mcp.ts
 ```
 
 Exposed MCP tools:
 
-| Tool               | What it does                                                       |
-| ------------------ | ------------------------------------------------------------------ |
-| `rag_search`       | Semantic search over `.pi/rag/rag.tvim` with optional `root`.      |
-| `rag_status`       | Show config path, DB path, and index stats.                        |
-| `rag_index`        | Index/re-index the configured folder; detects `dim` if missing.    |
-| `rag_reset`        | Delete DB files; requires `confirm: true`; keeps config.           |
-| `rag_config_write` | Create/update `.pi/rag/config.json` without pi's interactive TUI.  |
+| Tool               | What it does                                                      |
+| ------------------ | ----------------------------------------------------------------- |
+| `rag_search`       | Semantic search over `.pi/rag/rag.tvim` with optional `root`.     |
+| `rag_status`       | Show config path, DB path, and index stats.                       |
+| `rag_index`        | Index/re-index the configured folder; detects `dim` if missing.   |
+| `rag_reset`        | Delete DB files; requires `confirm: true`; keeps config.          |
+| `rag_config_write` | Create/update `.pi/rag/config.json` without pi's interactive TUI. |
 
 Every MCP tool accepts an optional `root` because MCP servers may not start in
 the current project directory. If omitted, the server tries
@@ -149,16 +150,16 @@ Per-project state:
 
 ```json
 {
-  "folder": "raw",
-  "formats": [".md", ".txt", ".pdf", ".docx"],
-  "provider": "ollama",
-  "ollamaUrl": "http://localhost:11434",
-  "model": "nomic-embed-text",
-  "dim": 768,
-  "bitWidth": 4,
-  "chunkTokens": 800,
-  "chunkOverlap": 100,
-  "exclude": ["node_modules", ".git", ".obsidian", ".pi"]
+	"folder": "raw",
+	"formats": [".md", ".txt", ".pdf", ".docx"],
+	"provider": "ollama",
+	"ollamaUrl": "http://localhost:11434",
+	"model": "nomic-embed-text",
+	"dim": 768,
+	"bitWidth": 4,
+	"chunkTokens": 800,
+	"chunkOverlap": 100,
+	"exclude": ["node_modules", ".git", ".obsidian", ".pi"]
 }
 ```
 

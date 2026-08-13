@@ -3,7 +3,15 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-coding-agent";
-import { Input, Key, matchesKey, truncateToWidth, visibleWidth, type Component, type Focusable } from "@earendil-works/pi-tui";
+import {
+	Input,
+	Key,
+	matchesKey,
+	truncateToWidth,
+	visibleWidth,
+	type Component,
+	type Focusable,
+} from "@earendil-works/pi-tui";
 
 const COMMIT_RE = /^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9._/-]+\))?(!)?: .+/i;
 
@@ -183,7 +191,8 @@ class CommitPrComponent implements Component, Focusable {
 					if (!this.messageTouched) {
 						const nextMessage = this.makeMessage(this.selectedFilesOrAll());
 						this.messageInput.setValue(nextMessage);
-						if (this.pushMode === "new" && !this.branchNameTouched) this.branchInput.setValue(suggestBranchName(nextMessage));
+						if (this.pushMode === "new" && !this.branchNameTouched)
+							this.branchInput.setValue(suggestBranchName(nextMessage));
 					}
 				}
 				this.refresh();
@@ -224,7 +233,8 @@ class CommitPrComponent implements Component, Focusable {
 		add(this.sectionTitle("Branch", this.focus === "branchMode" || this.focus === "branchName"));
 		add(this.theme.fg("muted", "Current: ") + this.theme.fg("accent", this.currentBranch));
 		this.renderBranchMode(add);
-		if (this.pushMode === "new") this.renderInput(add, "Branch name", this.branchInput, this.focus === "branchName", contentWidth);
+		if (this.pushMode === "new")
+			this.renderInput(add, "Branch name", this.branchInput, this.focus === "branchName", contentWidth);
 		rule();
 
 		const selectedCount = this.files.filter((f) => f.selected).length;
@@ -242,7 +252,11 @@ class CommitPrComponent implements Component, Focusable {
 		add(this.focus === "action" ? this.theme.fg("accent", `› [ ${actionText} ]`) : `  [ ${actionText} ]`);
 		if (this.error) add(this.theme.fg("error", this.error));
 
-		return [this.panelTop(panelWidth, "Commit, Push, and Draft PR"), ...body.map((line) => this.panelLine(line, panelWidth)), this.panelBottom(panelWidth)];
+		return [
+			this.panelTop(panelWidth, "Commit, Push, and Draft PR"),
+			...body.map((line) => this.panelLine(line, panelWidth)),
+			this.panelBottom(panelWidth),
+		];
 	}
 
 	private panelTop(width: number, title: string): string {
@@ -250,7 +264,11 @@ class CommitPrComponent implements Component, Focusable {
 		const label = ` ${title} `;
 		const clippedLabel = truncateToWidth(label, innerWidth, "…");
 		const fill = Math.max(0, innerWidth - visibleWidth(clippedLabel));
-		return this.theme.fg("accent", "╭") + this.theme.fg("accent", this.theme.bold(clippedLabel)) + this.theme.fg("accent", `${"─".repeat(fill)}╮`);
+		return (
+			this.theme.fg("accent", "╭") +
+			this.theme.fg("accent", this.theme.bold(clippedLabel)) +
+			this.theme.fg("accent", `${"─".repeat(fill)}╮`)
+		);
 	}
 
 	private panelBottom(width: number): string {
@@ -279,8 +297,12 @@ class CommitPrComponent implements Component, Focusable {
 
 		const lines: string[] = [];
 		const diffTitle = selectedFile ? `Diff: ${selectedFile.displayPath}` : "Diff";
-		lines.push(`${this.fit(this.theme.fg("muted", "Files"), leftWidth)}${divider}${this.fit(this.theme.fg("muted", diffTitle), rightWidth)}`);
-		lines.push(`${this.fit(this.theme.fg("dim", "─".repeat(leftWidth)), leftWidth)}${divider}${this.fit(this.theme.fg("dim", "─".repeat(rightWidth)), rightWidth)}`);
+		lines.push(
+			`${this.fit(this.theme.fg("muted", "Files"), leftWidth)}${divider}${this.fit(this.theme.fg("muted", diffTitle), rightWidth)}`,
+		);
+		lines.push(
+			`${this.fit(this.theme.fg("dim", "─".repeat(leftWidth)), leftWidth)}${divider}${this.fit(this.theme.fg("dim", "─".repeat(rightWidth)), rightWidth)}`,
+		);
 
 		for (let i = 0; i < rows; i++) {
 			const left = i < this.files.length ? this.renderFileRow(i, leftWidth) : "";
@@ -303,7 +325,8 @@ class CommitPrComponent implements Component, Focusable {
 		const diffLines = this.getSelectedDiffLines();
 		const rows = Math.min(14, diffLines.length);
 		for (let i = 0; i < rows; i++) lines.push(diffLines[this.diffScroll + i] ?? "");
-		if (this.diffScroll + rows < diffLines.length) lines.push(this.theme.fg("dim", `… ${diffLines.length - this.diffScroll - rows} more diff lines`));
+		if (this.diffScroll + rows < diffLines.length)
+			lines.push(this.theme.fg("dim", `… ${diffLines.length - this.diffScroll - rows} more diff lines`));
 		return lines;
 	}
 
@@ -314,7 +337,9 @@ class CommitPrComponent implements Component, Focusable {
 		const pointer = selected ? this.theme.fg(active ? "accent" : "muted", "› ") : "  ";
 		const checkbox = file.selected ? this.theme.fg("success", "[x]") : this.theme.fg("dim", "[ ]");
 		const status = this.theme.fg(file.staged ? "success" : "muted", file.xy.padEnd(2));
-		const path = selected ? this.theme.fg(active ? "accent" : "muted", file.displayPath) : this.theme.fg("text", file.displayPath);
+		const path = selected
+			? this.theme.fg(active ? "accent" : "muted", file.displayPath)
+			: this.theme.fg("text", file.displayPath);
 		return this.fit(`${pointer}${checkbox} ${status} ${path}`, width);
 	}
 
@@ -346,15 +371,21 @@ class CommitPrComponent implements Component, Focusable {
 	}
 
 	private renderBranchMode(add: (line?: string) => void) {
-		const current = this.pushMode === "current" ? this.theme.fg("success", "● current") : this.theme.fg("dim", "○ current");
-		const next = this.pushMode === "new" ? this.theme.fg("success", "● new branch") : this.theme.fg("dim", "○ new branch");
+		const current =
+			this.pushMode === "current" ? this.theme.fg("success", "● current") : this.theme.fg("dim", "○ current");
+		const next =
+			this.pushMode === "new" ? this.theme.fg("success", "● new branch") : this.theme.fg("dim", "○ new branch");
 		const marker = this.focus === "branchMode" ? this.theme.fg("accent", "› ") : "  ";
 		const text = `${marker}Push target: ${current}  ${next}`;
 		add(this.focus === "branchMode" ? this.theme.fg("accent", text) : text);
 	}
 
 	private renderInput(add: (line?: string) => void, label: string, input: Input, active: boolean, width: number) {
-		const prefix = label ? `${active ? this.theme.fg("accent", "› ") : "  "}${label}: ` : active ? this.theme.fg("accent", "› ") : "  ";
+		const prefix = label
+			? `${active ? this.theme.fg("accent", "› ") : "  "}${label}: `
+			: active
+				? this.theme.fg("accent", "› ")
+				: "  ";
 		const inputWidth = Math.max(1, width - visibleWidth(prefix));
 		for (const line of input.render(inputWidth)) {
 			add(prefix + line);
@@ -408,7 +439,9 @@ class CommitPrComponent implements Component, Focusable {
 	}
 
 	private focusOrder(): FocusArea[] {
-		return this.pushMode === "new" ? ["branchMode", "branchName", "files", "message", "action"] : ["branchMode", "files", "message", "action"];
+		return this.pushMode === "new"
+			? ["branchMode", "branchName", "files", "message", "action"]
+			: ["branchMode", "files", "message", "action"];
 	}
 
 	private moveFocus(direction: 1 | -1) {
@@ -457,10 +490,22 @@ export default function commitPrExtension(pi: ExtensionAPI) {
 			const fileDiffs = await getFileDiffs(pi, ctx.cwd, files);
 			const makeMessage = (changedFiles: ChangedFile[]) => suggestCommitMetadata(changedFiles, diff).message;
 			const initialMessage = makeMessage(files);
-			const initialPushMode: PushMode = ["main", "master", "develop", "trunk"].includes(currentBranch) ? "new" : "current";
+			const initialPushMode: PushMode = ["main", "master", "develop", "trunk"].includes(currentBranch)
+				? "new"
+				: "current";
 
 			const result = await ctx.ui.custom<CommitWizardResult | null>((tui, theme, _kb, done) => {
-				return new CommitPrComponent(tui, theme, currentBranch, files, fileDiffs, initialMessage, initialPushMode, makeMessage, done);
+				return new CommitPrComponent(
+					tui,
+					theme,
+					currentBranch,
+					files,
+					fileDiffs,
+					initialMessage,
+					initialPushMode,
+					makeMessage,
+					done,
+				);
 			});
 
 			if (!result) {
@@ -553,7 +598,10 @@ async function getFileDiffs(pi: ExtensionAPI, cwd: string, files: ChangedFile[])
 		}
 
 		if (file.xy === "??") {
-			const untracked = await pi.exec("git", ["diff", "--no-index", "--", "/dev/null", file.path], { cwd, timeout: 15_000 });
+			const untracked = await pi.exec("git", ["diff", "--no-index", "--", "/dev/null", file.path], {
+				cwd,
+				timeout: 15_000,
+			});
 			if (untracked.stdout.trim()) parts.push(untracked.stdout);
 		}
 
@@ -569,7 +617,8 @@ function cleanUnifiedDiff(diff: string): string {
 		.filter((line) => {
 			if (line.startsWith("diff --git ")) return false;
 			if (/^index [0-9a-f]+\.\./i.test(line)) return false;
-			if (/^(new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to)\b/.test(line)) return false;
+			if (/^(new file mode|deleted file mode|old mode|new mode|similarity index|rename from|rename to)\b/.test(line))
+				return false;
 			return true;
 		})
 		.join("\n")
@@ -610,10 +659,24 @@ async function commitPushAndCreatePr(
 		const prBodyFile = join(tempDir, "pull-request-body.md");
 		await writeFile(prBodyFile, ensureTrailingNewline(prBody), "utf8");
 
-		const pr = await pi.exec("gh", ["pr", "create", "--draft", "--title", firstLine(selection.commitMessage), "--body-file", prBodyFile, "--head", branch], {
-			cwd: ctx.cwd,
-			timeout: 60_000,
-		});
+		const pr = await pi.exec(
+			"gh",
+			[
+				"pr",
+				"create",
+				"--draft",
+				"--title",
+				firstLine(selection.commitMessage),
+				"--body-file",
+				prBodyFile,
+				"--head",
+				branch,
+			],
+			{
+				cwd: ctx.cwd,
+				timeout: 60_000,
+			},
+		);
 
 		let prUrl: string | undefined;
 		if (pr.code === 0) {
@@ -621,7 +684,10 @@ async function commitPushAndCreatePr(
 			await maintainDraftPrLabels(pi, ctx.cwd, prUrl);
 			await pi.exec("gh", ["pr", "view", "--web"], { cwd: ctx.cwd, timeout: 30_000 });
 		} else {
-			const existing = await pi.exec("gh", ["pr", "view", branch, "--json", "url", "--jq", ".url"], { cwd: ctx.cwd, timeout: 30_000 });
+			const existing = await pi.exec("gh", ["pr", "view", branch, "--json", "url", "--jq", ".url"], {
+				cwd: ctx.cwd,
+				timeout: 30_000,
+			});
 			if (existing.code === 0 && existing.stdout.trim()) {
 				prUrl = existing.stdout.trim();
 				await maintainDraftPrLabels(pi, ctx.cwd, prUrl);
@@ -640,10 +706,22 @@ async function commitPushAndCreatePr(
 async function maintainDraftPrLabels(pi: ExtensionAPI, cwd: string, prUrl?: string): Promise<void> {
 	const prNumber = prUrl ? extractPullRequestNumber(prUrl) : undefined;
 	if (!prNumber) return;
-	await pi.exec("gh", ["issue", "edit", String(prNumber), "--add-label", PR_LABELS.workInProgress, "--remove-label", PR_LABELS.readyForReview], {
-		cwd,
-		timeout: 30_000,
-	});
+	await pi.exec(
+		"gh",
+		[
+			"issue",
+			"edit",
+			String(prNumber),
+			"--add-label",
+			PR_LABELS.workInProgress,
+			"--remove-label",
+			PR_LABELS.readyForReview,
+		],
+		{
+			cwd,
+			timeout: 30_000,
+		},
+	);
 }
 
 function extractPullRequestNumber(url: string): number | undefined {
@@ -655,10 +733,18 @@ async function applyStaging(pi: ExtensionAPI, cwd: string, selectedFiles: Change
 	const selectedPaths = new Set(selectedFiles.map((file) => file.path));
 	const allFiles = await getChangedFiles(pi, cwd);
 	const pathsToStage = allFiles.filter((file) => selectedPaths.has(file.path)).map((file) => file.path);
-	const pathsToUnstage = allFiles.filter((file) => !selectedPaths.has(file.path) && file.staged).map((file) => file.path);
+	const pathsToUnstage = allFiles
+		.filter((file) => !selectedPaths.has(file.path) && file.staged)
+		.map((file) => file.path);
 
 	if (pathsToUnstage.length > 0) {
-		await execOrThrow(pi, "git", ["restore", "--staged", "--", ...pathsToUnstage], cwd, "Failed to unstage deselected files");
+		await execOrThrow(
+			pi,
+			"git",
+			["restore", "--staged", "--", ...pathsToUnstage],
+			cwd,
+			"Failed to unstage deselected files",
+		);
 	}
 	if (pathsToStage.length > 0) {
 		await execOrThrow(pi, "git", ["add", "--", ...pathsToStage], cwd, "Failed to stage selected files");
@@ -674,7 +760,13 @@ async function getRemote(pi: ExtensionAPI, cwd: string): Promise<string> {
 	return remotes.includes("origin") ? "origin" : remotes[0];
 }
 
-async function execOrThrow(pi: ExtensionAPI, command: string, args: string[], cwd: string, message?: string): Promise<string> {
+async function execOrThrow(
+	pi: ExtensionAPI,
+	command: string,
+	args: string[],
+	cwd: string,
+	message?: string,
+): Promise<string> {
 	const result = await pi.exec(command, args, { cwd, timeout: 60_000 });
 	if (result.code !== 0) {
 		throw new Error(`${message ?? `${command} ${args.join(" ")} failed`}\n${result.stderr || result.stdout}`.trim());
@@ -690,10 +782,22 @@ function suggestCommitMetadata(files: ChangedFile[], diff: string): CommitMetada
 	if (lowerPaths.some((path) => path.startsWith(".pi/extensions/"))) {
 		return buildMetadata("feat", "pi", "add commit and PR workflow TUI");
 	}
-	if (lowerDiff.includes('"packagemanager": "pnpm@11') || (lowerDiff.includes("allowbuilds:") && lowerDiff.includes("esbuild"))) {
+	if (
+		lowerDiff.includes('"packagemanager": "pnpm@11') ||
+		(lowerDiff.includes("allowbuilds:") && lowerDiff.includes("esbuild"))
+	) {
 		return buildMetadata("build", "pnpm", "pin pnpm 11 and approve esbuild builds");
 	}
-	if (lowerPaths.some((path) => path.includes("dockerfile") || path.includes("docker-compose") || path.endsWith("package.json") || path.endsWith("pnpm-lock.yaml") || path.endsWith("pnpm-workspace.yaml"))) {
+	if (
+		lowerPaths.some(
+			(path) =>
+				path.includes("dockerfile") ||
+				path.includes("docker-compose") ||
+				path.endsWith("package.json") ||
+				path.endsWith("pnpm-lock.yaml") ||
+				path.endsWith("pnpm-workspace.yaml"),
+		)
+	) {
 		return buildMetadata("build", inferScope(paths), "update project build configuration");
 	}
 	if (lowerPaths.every((path) => path.startsWith("docs/") || path.endsWith(".md"))) {
@@ -716,7 +820,10 @@ function suggestCommitMetadata(files: ChangedFile[], diff: string): CommitMetada
 }
 
 function buildMetadata(type: string, scope: string | undefined, summary: string): CommitMetadata {
-	const safeScope = scope?.replace(/[^a-z0-9._/-]/gi, "-").replace(/-+/g, "-").toLowerCase();
+	const safeScope = scope
+		?.replace(/[^a-z0-9._/-]/gi, "-")
+		.replace(/-+/g, "-")
+		.toLowerCase();
 	const message = safeScope ? `${type}(${safeScope}): ${summary}` : `${type}: ${summary}`;
 	return { type, scope: safeScope, summary, message };
 }
@@ -734,7 +841,9 @@ function suggestBranchName(commitMessage: string): string {
 	const parsed = parseConventionalCommit(commitMessage);
 	const type = parsed?.type ?? "chore";
 	const scope = parsed?.scope ? `${slugify(parsed.scope)}-` : "";
-	const summary = slugify(parsed?.summary ?? commitMessage).slice(0, 72).replace(/-+$/, "");
+	const summary = slugify(parsed?.summary ?? commitMessage)
+		.slice(0, 72)
+		.replace(/-+$/, "");
 	return `${type}/${scope}${summary || "changes"}`;
 }
 
@@ -772,15 +881,27 @@ function buildPullRequestBody(cwd: string, commitMessage: string, branch: string
 
 	let body = checkTemplateBoxes(template.content, parsed?.type);
 	let filled = false;
-	const summaryResult = insertUnderHeading(body, ["summary", "description", "what changed", "what's changed"], [`- ${capitalize(summary)}`, `- Branch: \`${branch}\``].join("\n"));
+	const summaryResult = insertUnderHeading(
+		body,
+		["summary", "description", "what changed", "what's changed"],
+		[`- ${capitalize(summary)}`, `- Branch: \`${branch}\``].join("\n"),
+	);
 	body = summaryResult.body;
 	filled = filled || summaryResult.changed;
 
-	const changesResult = insertUnderHeading(body, ["changes", "change list", "implementation"], files.map((file) => `- ${statusDescription(file.xy)} \`${file.displayPath}\``).join("\n"));
+	const changesResult = insertUnderHeading(
+		body,
+		["changes", "change list", "implementation"],
+		files.map((file) => `- ${statusDescription(file.xy)} \`${file.displayPath}\``).join("\n"),
+	);
 	body = changesResult.body;
 	filled = filled || changesResult.changed;
 
-	const testingResult = insertUnderHeading(body, ["testing", "test plan", "validation"], "- Not run by commit-pr; update this before marking the PR ready for review if needed.");
+	const testingResult = insertUnderHeading(
+		body,
+		["testing", "test plan", "validation"],
+		"- Not run by commit-pr; update this before marking the PR ready for review if needed.",
+	);
 	body = testingResult.body;
 	filled = filled || testingResult.changed;
 
@@ -854,7 +975,10 @@ function checkTemplateBoxes(markdown: string, type?: string): string {
 }
 
 function normalizeHeading(value: string): string {
-	return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, " ")
+		.trim();
 }
 
 function statusDescription(xy: string): string {

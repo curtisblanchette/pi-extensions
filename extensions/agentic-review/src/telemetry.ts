@@ -1,7 +1,8 @@
 import type { WorkflowResult } from "./types.ts";
 
 export type WorkflowStage = "gather" | "review" | "classify" | "analyze-bugs" | "log-deferrals" | "gate" | "apply";
-export type WorkflowEventType = "stage_started" | "stage_progress" | "stage_completed" | "stage_skipped" | "model_delta" | "log";
+export type WorkflowEventType =
+	"stage_started" | "stage_progress" | "stage_completed" | "stage_skipped" | "model_delta" | "log";
 
 export interface WorkflowTelemetryEvent {
 	type: WorkflowEventType;

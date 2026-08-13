@@ -33,9 +33,13 @@ export class RuntimeSettingsStore {
 		if (!existsSync(this.path)) return { version: 1, forceDryRun: false };
 		try {
 			const parsed = JSON.parse(readFileSync(this.path, "utf8")) as StoredRuntimeSettings;
-			return parsed.version === 1 ? { version: 1, forceDryRun: parsed.forceDryRun === true } : { version: 1, forceDryRun: false };
+			return parsed.version === 1
+				? { version: 1, forceDryRun: parsed.forceDryRun === true }
+				: { version: 1, forceDryRun: false };
 		} catch (error) {
-			throw new Error(`Could not read agentic-review settings ${this.path}: ${error instanceof Error ? error.message : String(error)}`);
+			throw new Error(
+				`Could not read agentic-review settings ${this.path}: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	}
 

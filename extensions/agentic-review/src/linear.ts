@@ -123,7 +123,9 @@ export class LinearClient {
 
 		const configured = this.config.team?.trim().toLowerCase();
 		let team = configured
-			? teams.find((candidate) => [candidate.id, candidate.key, candidate.name].some((value) => value.toLowerCase() === configured))
+			? teams.find((candidate) =>
+					[candidate.id, candidate.key, candidate.name].some((value) => value.toLowerCase() === configured),
+				)
 			: undefined;
 		if (configured && !team) throw new Error(`Configured Linear team was not found: ${this.config.team}`);
 
@@ -154,7 +156,10 @@ export class LinearClient {
 		});
 		const payload = (await response.json()) as GraphQlResponse<T>;
 		if (!response.ok || payload.errors?.length) {
-			const details = payload.errors?.map((error) => error.message).filter(Boolean).join("; ");
+			const details = payload.errors
+				?.map((error) => error.message)
+				.filter(Boolean)
+				.join("; ");
 			throw new Error(`Linear API request failed (${response.status})${details ? `: ${details}` : ""}`);
 		}
 		if (!payload.data) throw new Error("Linear API returned no data");
@@ -163,7 +168,9 @@ export class LinearClient {
 }
 
 function buildDescription(pr: PrContext, finding: Finding, analysis: BugAnalysis): string {
-	const location = finding.path ? `${finding.path}${finding.line ? `:${finding.line}` : ""}` : "No line-specific location";
+	const location = finding.path
+		? `${finding.path}${finding.line ? `:${finding.line}` : ""}`
+		: "No line-specific location";
 	return [
 		"## Non-blocking bug follow-up",
 		"",
@@ -182,7 +189,8 @@ function buildDescription(pr: PrContext, finding: Finding, analysis: BugAnalysis
 		"",
 		"### Edge case",
 		analysis.isEdgeCase
-			? analysis.edgeCaseDefinition || "The review classified this as an edge case but did not provide a separate definition."
+			? analysis.edgeCaseDefinition ||
+				"The review classified this as an edge case but did not provide a separate definition."
 			: "This follow-up was not classified as an edge case; it was judged real but non-blocking.",
 		"",
 		"### Acceptance-criteria impact",

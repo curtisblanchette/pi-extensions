@@ -102,20 +102,26 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 		}
 
 		const handoff = Boolean(state.handoffActive);
-		ctx.ui.setStatus?.(STATUS_KEY, style(ctx, handoff ? "success" : "warning", handoff ? "planning+handoff" : "planning"));
-		ctx.ui.setWidget?.(WIDGET_KEY, [
-			style(ctx, "accent", handoff ? "Planning Agent handoff mode active" : "Planning Agent active"),
-			handoff
-				? "Approved handoff mode: read-only planning plus guarded Linear/Notion handoff writes. Each write still requires confirmation."
-				: "Read-only planning mode: inspect, ask clarifying questions, then produce an implementation plan.",
-			handoff
-				? `Linear guardrail: ${describeLinearScope()}.`
-				: "Enable handoff: /planning-agent-handoff [context or Notion target URL]",
-			handoff
-				? `Notion guardrail: ${getConfiguredNotionTarget(state) ? "restricted to approved target" : `writes blocked until ${NOTION_TARGET_URL_ENV} or a target URL is provided`}.`
-				: "Disable: /planning-agent-off • Save: /save-plan [path]",
-			handoff ? "Disable handoff: /planning-agent-handoff-off • Disable planning: /planning-agent-off" : undefined,
-		].filter(Boolean) as string[]);
+		ctx.ui.setStatus?.(
+			STATUS_KEY,
+			style(ctx, handoff ? "success" : "warning", handoff ? "planning+handoff" : "planning"),
+		);
+		ctx.ui.setWidget?.(
+			WIDGET_KEY,
+			[
+				style(ctx, "accent", handoff ? "Planning Agent handoff mode active" : "Planning Agent active"),
+				handoff
+					? "Approved handoff mode: read-only planning plus guarded Linear/Notion handoff writes. Each write still requires confirmation."
+					: "Read-only planning mode: inspect, ask clarifying questions, then produce an implementation plan.",
+				handoff
+					? `Linear guardrail: ${describeLinearScope()}.`
+					: "Enable handoff: /planning-agent-handoff [context or Notion target URL]",
+				handoff
+					? `Notion guardrail: ${getConfiguredNotionTarget(state) ? "restricted to approved target" : `writes blocked until ${NOTION_TARGET_URL_ENV} or a target URL is provided`}.`
+					: "Disable: /planning-agent-off • Save: /save-plan [path]",
+				handoff ? "Disable handoff: /planning-agent-handoff-off • Disable planning: /planning-agent-off" : undefined,
+			].filter(Boolean) as string[],
+		);
 	}
 
 	function setPlanningTools(): void {
@@ -156,15 +162,7 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 			request =
 				(await ctx.ui.editor(
 					"Planning Agent — paste request, PRD, issue, links, constraints, or repo context",
-					[
-						"Goal:",
-						"",
-						"Context / links / files:",
-						"",
-						"Constraints:",
-						"",
-						"Desired output / deadline:",
-					].join("\n"),
+					["Goal:", "", "Context / links / files:", "", "Constraints:", "", "Desired output / deadline:"].join("\n"),
 				)) ?? "";
 		}
 
@@ -266,9 +264,7 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 
 		const absolute = isAbsolute(target) ? target : resolve(ctx.cwd, target);
 		const ok =
-			!ctx.hasUI ||
-			!ctx.ui.confirm ||
-			(await ctx.ui.confirm("Save implementation plan?", `Write ${absolute}?`));
+			!ctx.hasUI || !ctx.ui.confirm || (await ctx.ui.confirm("Save implementation plan?", `Write ${absolute}?`));
 		if (!ok) {
 			ctx.ui.notify("Save cancelled", "info");
 			return;
@@ -281,11 +277,16 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 		ctx.ui.notify(`Saved implementation plan to ${absolute}`, "info");
 	}
 
-	async function confirmHandoffWrite(ctx: ExtensionContext, event: ToolCallEvent, summary: string): Promise<BlockResult> {
+	async function confirmHandoffWrite(
+		ctx: ExtensionContext,
+		event: ToolCallEvent,
+		summary: string,
+	): Promise<BlockResult> {
 		if (!ctx.hasUI || !ctx.ui.confirm) {
 			return {
 				block: true,
-				reason: "Planning Agent handoff writes require interactive user confirmation. Re-run in TUI mode or disable handoff.",
+				reason:
+					"Planning Agent handoff writes require interactive user confirmation. Re-run in TUI mode or disable handoff.",
 			};
 		}
 
@@ -324,7 +325,8 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 			if (!issueId && !team && !DEFAULT_LINEAR_TEAM) {
 				return {
 					block: true,
-					reason: "Planning Agent Linear issue creation must include a team, or set PLANNING_AGENT_LINEAR_TEAM. All Linear projects are allowed; no project allowlist is enforced.",
+					reason:
+						"Planning Agent Linear issue creation must include a team, or set PLANNING_AGENT_LINEAR_TEAM. All Linear projects are allowed; no project allowlist is enforced.",
 				};
 			}
 
@@ -335,7 +337,11 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 			const labels = ensureRequiredLabels(input.labels);
 			if (labels) input.labels = labels;
 
-			return confirmHandoffWrite(ctx, event, describeLinearIssueWrite(issueId, stringValue(input.team), stringValue(input.project)));
+			return confirmHandoffWrite(
+				ctx,
+				event,
+				describeLinearIssueWrite(issueId, stringValue(input.team), stringValue(input.project)),
+			);
 		}
 
 		if (op === "linear_save_comment") {
@@ -344,14 +350,24 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 				return { block: true, reason: "Planning Agent does not update existing Linear comments in handoff mode." };
 			}
 			if (stringValue(input.parentId)) {
-				return { block: true, reason: "Planning Agent does not reply to existing Linear comment threads because scope cannot be verified." };
+				return {
+					block: true,
+					reason: "Planning Agent does not reply to existing Linear comment threads because scope cannot be verified.",
+				};
 			}
 			const issueId = stringValue(input.issueId);
 			const projectId = stringValue(input.projectId);
 			if (!issueId && !projectId) {
-				return { block: true, reason: "Planning Agent Linear comments must target an explicit Linear issueId or projectId." };
+				return {
+					block: true,
+					reason: "Planning Agent Linear comments must target an explicit Linear issueId or projectId.",
+				};
 			}
-			return confirmHandoffWrite(ctx, event, `Linear comment targets ${issueId ? `issue ${issueId}` : `project ${projectId}`}. All Linear projects are allowed.`);
+			return confirmHandoffWrite(
+				ctx,
+				event,
+				`Linear comment targets ${issueId ? `issue ${issueId}` : `project ${projectId}`}. All Linear projects are allowed.`,
+			);
 		}
 
 		if (op === "linear_save_document") {
@@ -361,12 +377,23 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 			if (!issue && !project && DEFAULT_LINEAR_PROJECT) input.project = DEFAULT_LINEAR_PROJECT;
 			const scopedProject = stringValue(input.project);
 			if (!issue && !scopedProject) {
-				return { block: true, reason: "Planning Agent Linear documents must include an explicit Linear issue or project, or set PLANNING_AGENT_LINEAR_PROJECT." };
+				return {
+					block: true,
+					reason:
+						"Planning Agent Linear documents must include an explicit Linear issue or project, or set PLANNING_AGENT_LINEAR_PROJECT.",
+				};
 			}
-			return confirmHandoffWrite(ctx, event, `Linear document targets ${issue ? `issue ${issue}` : `project ${scopedProject}`}. All Linear projects are allowed.`);
+			return confirmHandoffWrite(
+				ctx,
+				event,
+				`Linear document targets ${issue ? `issue ${issue}` : `project ${scopedProject}`}. All Linear projects are allowed.`,
+			);
 		}
 
-		return { block: true, reason: `Planning Agent handoff mode does not allow this Linear operation: ${event.toolName}` };
+		return {
+			block: true,
+			reason: `Planning Agent handoff mode does not allow this Linear operation: ${event.toolName}`,
+		};
 	}
 
 	async function guardNotionToolCall(event: ToolCallEvent, ctx: ExtensionContext): Promise<BlockResult> {
@@ -378,7 +405,10 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 		}
 
 		if (!isAllowedNotionWriteOperation(op)) {
-			return { block: true, reason: `Planning Agent handoff mode does not allow this Notion operation: ${event.toolName}` };
+			return {
+				block: true,
+				reason: `Planning Agent handoff mode does not allow this Notion operation: ${event.toolName}`,
+			};
 		}
 
 		const target = getConfiguredNotionTarget(state);
@@ -404,14 +434,16 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 		if (MUTATION_TOOLS.has(event.toolName)) {
 			return {
 				block: true,
-				reason: "Planning Agent is read-only. Produce the Markdown implementation plan in the response; use /save-plan [path] to persist captured output.",
+				reason:
+					"Planning Agent is read-only. Produce the Markdown implementation plan in the response; use /save-plan [path] to persist captured output.",
 			};
 		}
 
 		if (event.toolName === "mcp" && !isAllowedMcpGatewayReadOnlyCall(event.input)) {
 			return {
 				block: true,
-				reason: "Planning Agent allows MCP gateway calls only for discovery and read-only tool calls (get/list/search/query/read/fetch/etc.). MCP mutations remain blocked.",
+				reason:
+					"Planning Agent allows MCP gateway calls only for discovery and read-only tool calls (get/list/search/query/read/fetch/etc.). MCP mutations remain blocked.",
 			};
 		}
 
@@ -473,7 +505,9 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 				`Planning Agent: ${state.active ? "active" : "inactive"}`,
 				`Handoff mode: ${state.handoffActive ? "active" : "inactive"}`,
 				state.handoffApprovedAt ? `Handoff approved: ${new Date(state.handoffApprovedAt).toLocaleString()}` : undefined,
-				state.lastHandoffWriteAt ? `Last handoff write: ${new Date(state.lastHandoffWriteAt).toLocaleString()}` : undefined,
+				state.lastHandoffWriteAt
+					? `Last handoff write: ${new Date(state.lastHandoffWriteAt).toLocaleString()}`
+					: undefined,
 				`Linear scope: ${describeLinearScope()}`,
 				`Notion target: ${notionTarget?.display ?? `not configured (${NOTION_TARGET_URL_ENV}/${NOTION_TARGET_ID_ENV})`}`,
 				state.lastRequest ? `Last request: ${firstLine(state.lastRequest)}` : undefined,
@@ -539,7 +573,10 @@ export default function planningAgentExtension(pi: ExtensionAPI): void {
 		state = { ...state, lastPlanMarkdown: plan, lastPlanAt: Date.now() };
 		persistState();
 		updateUi(ctx);
-		ctx.ui.notify("Captured implementation plan. Use /save-plan [path] to write it to disk, or /planning-agent-off to exit planning mode.", "info");
+		ctx.ui.notify(
+			"Captured implementation plan. Use /save-plan [path] to write it to disk, or /planning-agent-off to exit planning mode.",
+			"info",
+		);
 	});
 }
 
@@ -588,13 +625,29 @@ function buildHandoffSystemContext(state: PlanningAgentState): string {
 		"- Never use bash, MCP gateway calls, or other integrations to bypass these restrictions; MCP is allowed only for read-only discovery/retrieval unless a guarded Linear/Notion handoff tool is explicitly approved.",
 		"- Before each batch post, summarize the intended records and wait for the confirmation dialog shown by the extension.",
 		"- If a handoff cannot be completed within these guardrails, stop and explain what configuration or approval is missing.",
+		"",
+		"Linear issue-writing rules:",
+		"- Preserve facts, decisions, constraints, links, and acceptance criteria. Do not invent details.",
+		"- Use plain language, short sentences, active voice, and concrete nouns.",
+		"- Expand an acronym once only when doing so improves clarity.",
+		"- Remove filler, status narration, vague claims, and implementation jargon that does not affect the work.",
+		"- Give each requirement its own bullet. Do not chain concepts together.",
+		"- Separate confirmed requirements from suggestions, open questions, and assumptions.",
+		"- Describe the outcome first, then required work, then how completion is verified.",
+		"- Include implementation guidance only when it is a real constraint. Do not prescribe a solution when the ticket does not require one.",
+		"- Put missing or ambiguous information in Open questions. Do not guess.",
+		"- Keep each issue concise and skimmable. Do not use promotional language, emojis, or filler headings.",
+		"- Return only the rewritten issue using exactly these Markdown sections, in this order:",
+		"  ## Goal\n  [One or two sentences: the user or system outcome.]\n\n  ## Context\n  [Only context needed to understand why this work exists.]\n\n  ## Scope\n  - [Required change]\n\n  ## Constraints\n  - [Technical, product, security, or compatibility constraint]\n  [Omit this section if none exist.]\n\n  ## Acceptance criteria\n  - [Observable behavior or verifiable result]\n\n  ## Open questions\n  - [Missing decision or ambiguity]\n  [Omit this section if none exist.]",
 	].join("\n");
 }
 
 function normalizePlanningState(restored: Partial<PlanningAgentState>): PlanningAgentState {
 	return {
 		active: Boolean(restored.active),
-		baselineTools: Array.isArray(restored.baselineTools) ? restored.baselineTools.filter((name): name is string => typeof name === "string") : undefined,
+		baselineTools: Array.isArray(restored.baselineTools)
+			? restored.baselineTools.filter((name): name is string => typeof name === "string")
+			: undefined,
 		startedAt: restored.startedAt,
 		lastRequest: restored.lastRequest,
 		lastPlanMarkdown: restored.lastPlanMarkdown,
@@ -628,11 +681,20 @@ function getHandoffTools(pi: ExtensionAPI): string[] {
 function isPotentialHandoffTool(toolName: string): boolean {
 	if (isLinearTool(toolName)) {
 		const op = linearOperationName(toolName);
-		return isReadOnlyLinearOperation(op) || op === "linear_save_issue" || op === "linear_save_comment" || op === "linear_save_document";
+		return (
+			isReadOnlyLinearOperation(op) ||
+			op === "linear_save_issue" ||
+			op === "linear_save_comment" ||
+			op === "linear_save_document"
+		);
 	}
 	if (isNotionTool(toolName)) {
 		const op = notionOperationName(toolName);
-		return isNotionSetupOperation(op) || isReadOnlyNotionOperation(op) || (!isBlockedNotionOperation(op) && isAllowedNotionWriteOperation(op));
+		return (
+			isNotionSetupOperation(op) ||
+			isReadOnlyNotionOperation(op) ||
+			(!isBlockedNotionOperation(op) && isAllowedNotionWriteOperation(op))
+		);
 	}
 	return false;
 }
@@ -712,13 +774,20 @@ function describeLinearScope(): string {
 	return details.join("; ");
 }
 
-function describeLinearIssueWrite(issueId: string | undefined, team: string | undefined, project: string | undefined): string {
-	const scope = [team ? `team ${team}` : undefined, project ? `project ${project}` : undefined].filter(Boolean).join(", ");
+function describeLinearIssueWrite(
+	issueId: string | undefined,
+	team: string | undefined,
+	project: string | undefined,
+): string {
+	const scope = [team ? `team ${team}` : undefined, project ? `project ${project}` : undefined]
+		.filter(Boolean)
+		.join(", ");
 	return `Linear issue ${issueId ? `update ${issueId}` : "create"}${scope ? ` scoped to ${scope}` : ""}. All Linear projects are allowed.`;
 }
 
 function ensureRequiredLabels(value: unknown): string[] | undefined {
-	if (REQUIRED_LINEAR_LABELS.length === 0) return Array.isArray(value) ? value.map((label) => String(label)) : undefined;
+	if (REQUIRED_LINEAR_LABELS.length === 0)
+		return Array.isArray(value) ? value.map((label) => String(label)) : undefined;
 	const labels = Array.isArray(value) ? value.map((label) => String(label)) : [];
 	const normalized = new Set(labels.map(normalizeIdentifier));
 	for (const label of REQUIRED_LINEAR_LABELS) {
@@ -728,17 +797,27 @@ function ensureRequiredLabels(value: unknown): string[] | undefined {
 }
 
 function normalizeToolName(value: string): string {
-	return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "");
 }
 
 function normalizeIdentifier(value: string): string {
-	return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+	return value
+		.toLowerCase()
+		.trim()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
 }
 
 type NotionTarget = { display: string; identifiers: Set<string> };
 
 function getConfiguredNotionTarget(state: PlanningAgentState): NotionTarget | undefined {
-	const display = state.handoffNotionTargetUrl ?? process.env[NOTION_TARGET_URL_ENV]?.trim() ?? process.env[NOTION_TARGET_ID_ENV]?.trim();
+	const display =
+		state.handoffNotionTargetUrl ??
+		process.env[NOTION_TARGET_URL_ENV]?.trim() ??
+		process.env[NOTION_TARGET_ID_ENV]?.trim();
 	const envId = process.env[NOTION_TARGET_ID_ENV]?.trim();
 	const urlId = display ? extractNotionId(display) : undefined;
 	const identifiers = [display, envId, urlId, urlId ? hyphenateNotionId(urlId) : undefined]
@@ -748,8 +827,13 @@ function getConfiguredNotionTarget(state: PlanningAgentState): NotionTarget | un
 	return { display, identifiers: new Set(identifiers) };
 }
 
-function validateNotionWriteTarget(op: string, input: Record<string, unknown>, target: NotionTarget): string | undefined {
-	const directTarget = (value: unknown): boolean => typeof value === "string" && target.identifiers.has(normalizeNotionIdentifier(value));
+function validateNotionWriteTarget(
+	op: string,
+	input: Record<string, unknown>,
+	target: NotionTarget,
+): string | undefined {
+	const directTarget = (value: unknown): boolean =>
+		typeof value === "string" && target.identifiers.has(normalizeNotionIdentifier(value));
 	const parentTarget = (value: unknown): boolean => {
 		if (!value || typeof value !== "object" || Array.isArray(value)) return false;
 		const parent = value as Record<string, unknown>;

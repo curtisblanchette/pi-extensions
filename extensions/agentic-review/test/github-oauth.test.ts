@@ -43,7 +43,10 @@ test("GitHub auth uses the GitHub CLI token and stores only repository selection
 	assert.equal(manager.getAccessToken(), "gho_test_token");
 
 	const repositories = await manager.listRepositories();
-	assert.deepEqual(repositories.map((repo) => repo.fullName), ["example/private-repo"]);
+	assert.deepEqual(
+		repositories.map((repo) => repo.fullName),
+		["example/private-repo"],
+	);
 	const selected = await manager.selectRepository("example/private-repo");
 	assert.equal(selected.repository, "example/private-repo");
 	assert.equal(manager.getRepository(), "example/private-repo");

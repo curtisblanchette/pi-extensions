@@ -103,7 +103,10 @@ export class GitHubClient {
 	}
 
 	async getPullRequest(prNumber: number): Promise<PullRequestSummary & { body: string }> {
-		const output = await this.api([`repos/${this.repo.owner}/${this.repo.name}/pulls/${prNumber}`], `Failed to load PR #${prNumber}`);
+		const output = await this.api(
+			[`repos/${this.repo.owner}/${this.repo.name}/pulls/${prNumber}`],
+			`Failed to load PR #${prNumber}`,
+		);
 		const pr = JSON.parse(output) as RestPullRequest;
 		return { ...mapPullRequest(pr), body: pr.body ?? "" };
 	}
@@ -124,7 +127,8 @@ export class GitHubClient {
 		const organizations = allowlist.organizations;
 		const teams = allowlist.teams;
 		if (!users.length && !organizations.length && !teams.length) return { allowed: true };
-		if (!author) return { allowed: false, reason: "PR author is unknown and cannot be checked against the author allowlist" };
+		if (!author)
+			return { allowed: false, reason: "PR author is unknown and cannot be checked against the author allowlist" };
 		if (users.includes(author.toLowerCase())) return { allowed: true };
 
 		for (const org of organizations) {
@@ -199,7 +203,10 @@ export class GitHubClient {
 		};
 	}
 
-	async getReviewGuidance(changedFiles: PrContext["changedFiles"], ref: string): Promise<Array<{ path: string; content: string }>> {
+	async getReviewGuidance(
+		changedFiles: PrContext["changedFiles"],
+		ref: string,
+	): Promise<Array<{ path: string; content: string }>> {
 		const candidates = policyCandidatePaths(changedFiles.map((file) => file.path));
 		const guidance: Array<{ path: string; content: string }> = [];
 		for (const path of candidates) {
@@ -249,7 +256,10 @@ export class GitHubClient {
 		};
 	}
 
-	private async postInlineComments(pr: PrContext, comments: InlineCandidate[]): Promise<{ posted: number; failures: string[] }> {
+	private async postInlineComments(
+		pr: PrContext,
+		comments: InlineCandidate[],
+	): Promise<{ posted: number; failures: string[] }> {
 		let posted = 0;
 		const failures: string[] = [];
 		for (const comment of comments) {
@@ -314,7 +324,11 @@ export class GitHubClient {
 		const encodedPath = path.split("/").map(encodeURIComponent).join("/");
 		try {
 			return await this.api(
-				["-H", "Accept: application/vnd.github.raw+json", `repos/${this.repo.owner}/${this.repo.name}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`],
+				[
+					"-H",
+					"Accept: application/vnd.github.raw+json",
+					`repos/${this.repo.owner}/${this.repo.name}/contents/${encodedPath}?ref=${encodeURIComponent(ref)}`,
+				],
 				`Failed to load review guidance ${path}`,
 			);
 		} catch {
@@ -444,7 +458,8 @@ function extractAcceptanceCriteria(body: string): string {
 	if (!body.trim()) return "No acceptance criteria were included in the PR description.";
 	const heading = /^(#{1,6})\s*(acceptance criteria|requirements|definition of done|success criteria)\s*$/gim;
 	const match = heading.exec(body);
-	if (!match) return "No explicit acceptance-criteria section was included. Infer intended behavior conservatively from the PR description.";
+	if (!match)
+		return "No explicit acceptance-criteria section was included. Infer intended behavior conservatively from the PR description.";
 	const start = heading.lastIndex;
 	const rest = body.slice(start);
 	const nextHeading = rest.search(/^#{1,6}\s+.+$/m);
@@ -507,7 +522,10 @@ function parseTeamSpec(value: string, defaultOrg: string): { org: string; teamSl
 	return team ? { org: orgOrTeam, teamSlug: team } : { org: defaultOrg, teamSlug: orgOrTeam };
 }
 
-function describeAuthorAllowlist(allowlist: AgenticReviewConfig["github"]["authorAllowlist"], defaultOrg: string): string {
+function describeAuthorAllowlist(
+	allowlist: AgenticReviewConfig["github"]["authorAllowlist"],
+	defaultOrg: string,
+): string {
 	return [
 		...allowlist.users.map((user) => `@${user}`),
 		...allowlist.organizations.map((org) => `org:${org}`),

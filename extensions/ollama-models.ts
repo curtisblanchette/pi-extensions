@@ -12,7 +12,14 @@ import {
 	type ExtensionAPI,
 	type ExtensionCommandContext,
 } from "@earendil-works/pi-coding-agent";
-import { Key, matchesKey, truncateToWidth, visibleWidth, wrapTextWithAnsi, type Component } from "@earendil-works/pi-tui";
+import {
+	Key,
+	matchesKey,
+	truncateToWidth,
+	visibleWidth,
+	wrapTextWithAnsi,
+	type Component,
+} from "@earendil-works/pi-tui";
 import { Type, type Static } from "typebox";
 
 const HUGGING_FACE_API = "https://huggingface.co/api";
@@ -22,21 +29,47 @@ const OLLAMA_OPENAI_BASE_URL = "http://127.0.0.1:11434/v1";
 const MAX_HF_SEARCH_RESULTS = 10;
 
 const findOllamaGgufSchema = Type.Object({
-	gpu: Type.Optional(Type.String({ description: "GPU to simulate, for example 'Apple M5 Max' or 'RTX 4090'. Omit to use detected hardware." })),
-	quant: Type.Optional(Type.String({ description: "Required GGUF quantization, for example 'Q6_K' or 'Q4_K_M'. Omit to use whichllm's recommendation." })),
-	top: Type.Optional(Type.Integer({ minimum: 1, maximum: 10, description: "Maximum recommendations to inspect (default 5)." })),
-	contextLength: Type.Optional(Type.String({ description: "Context length passed to whichllm, for example '32k' or '128k'." })),
-	fit: Type.Optional(StringEnum(["any", "gpu", "full-gpu"] as const, { description: "Runtime-fit requirement (default 'any')." })),
-	profile: Type.Optional(StringEnum(["general", "coding", "vision", "math", "any"] as const, { description: "whichllm ranking profile (default 'general')." })),
+	gpu: Type.Optional(
+		Type.String({
+			description: "GPU to simulate, for example 'Apple M5 Max' or 'RTX 4090'. Omit to use detected hardware.",
+		}),
+	),
+	quant: Type.Optional(
+		Type.String({
+			description: "Required GGUF quantization, for example 'Q6_K' or 'Q4_K_M'. Omit to use whichllm's recommendation.",
+		}),
+	),
+	top: Type.Optional(
+		Type.Integer({ minimum: 1, maximum: 10, description: "Maximum recommendations to inspect (default 5)." }),
+	),
+	contextLength: Type.Optional(
+		Type.String({ description: "Context length passed to whichllm, for example '32k' or '128k'." }),
+	),
+	fit: Type.Optional(
+		StringEnum(["any", "gpu", "full-gpu"] as const, { description: "Runtime-fit requirement (default 'any')." }),
+	),
+	profile: Type.Optional(
+		StringEnum(["general", "coding", "vision", "math", "any"] as const, {
+			description: "whichllm ranking profile (default 'general').",
+		}),
+	),
 });
 
 type FindOllamaGgufParams = Static<typeof findOllamaGgufSchema>;
 
 const installOllamaGgufSchema = Type.Object({
-	repository: Type.String({ description: "Public Hugging Face repository that contains the GGUF, for example 'unsloth/Qwen3.6-35B-A3B-GGUF'." }),
+	repository: Type.String({
+		description: "Public Hugging Face repository that contains the GGUF, for example 'unsloth/Qwen3.6-35B-A3B-GGUF'.",
+	}),
 	filename: Type.String({ description: "Exact .gguf filename from that repository." }),
-	modelName: Type.String({ description: "Lowercase Ollama model name and optional tag, for example 'qwen3.6:35b-q6k'." }),
-	downloadDirectory: Type.Optional(Type.String({ description: `Optional staging directory for the original GGUF. Defaults to ${DEFAULT_DOWNLOAD_DIRECTORY}. Do not use Ollama's managed models directory.` })),
+	modelName: Type.String({
+		description: "Lowercase Ollama model name and optional tag, for example 'qwen3.6:35b-q6k'.",
+	}),
+	downloadDirectory: Type.Optional(
+		Type.String({
+			description: `Optional staging directory for the original GGUF. Defaults to ${DEFAULT_DOWNLOAD_DIRECTORY}. Do not use Ollama's managed models directory.`,
+		}),
+	),
 });
 
 type InstallOllamaGgufParams = Static<typeof installOllamaGgufSchema>;
@@ -148,7 +181,10 @@ function validateRepository(repository: string): string {
 function validateFilename(filename: string): string {
 	const value = filename.trim();
 	const segments = value.split("/");
-	if (!value.toLowerCase().endsWith(".gguf") || segments.some((segment) => !segment || segment === "." || segment === "..")) {
+	if (
+		!value.toLowerCase().endsWith(".gguf") ||
+		segments.some((segment) => !segment || segment === "." || segment === "..")
+	) {
 		throw new Error("filename must be a repository-relative .gguf path without '.' or '..' segments.");
 	}
 	return value;
@@ -177,10 +213,14 @@ function resolveDownloadDirectory(directory: string | undefined): string {
 	const resolved = resolve(expandHome(directory?.trim() || DEFAULT_DOWNLOAD_DIRECTORY));
 	const ollamaDirectory = resolve(process.env.OLLAMA_MODELS || DEFAULT_OLLAMA_DIRECTORY);
 	if (isWithin(ollamaDirectory, resolved)) {
-		throw new Error(`Do not use ${ollamaDirectory} as a GGUF staging directory; Ollama manages it internally. Use a separate directory instead.`);
+		throw new Error(
+			`Do not use ${ollamaDirectory} as a GGUF staging directory; Ollama manages it internally. Use a separate directory instead.`,
+		);
 	}
 	if (/\s/.test(resolved)) {
-		throw new Error("The GGUF staging directory cannot contain whitespace because Ollama Modelfiles cannot reliably import whitespace-containing paths.");
+		throw new Error(
+			"The GGUF staging directory cannot contain whitespace because Ollama Modelfiles cannot reliably import whitespace-containing paths.",
+		);
 	}
 	return resolved;
 }
@@ -253,16 +293,27 @@ function suggestModelName(modelId: string, quant: string | undefined): string {
 		.replace(/[^a-z0-9._-]+/g, "-")
 		.replace(/^-+|-+$/g, "")
 		.slice(0, 80);
-	const tag = (quant ?? "gguf").toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 32);
+	const tag = (quant ?? "gguf")
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "")
+		.slice(0, 32);
 	return `${base}:${tag || "gguf"}`;
 }
 
-function resolvedArtifact(model: HuggingFaceModel, filename: string, via: GgufArtifact["via"]): GgufArtifact | undefined {
+function resolvedArtifact(
+	model: HuggingFaceModel,
+	filename: string,
+	via: GgufArtifact["via"],
+): GgufArtifact | undefined {
 	if (!model.sha || !/^[a-f0-9]{40}$/i.test(model.sha)) return undefined;
 	return { repository: model.id, filename, revision: model.sha, via };
 }
 
-async function findArtifactForModel(model: WhichLlmModel, quant: string | undefined, signal?: AbortSignal): Promise<GgufArtifact | undefined> {
+async function findArtifactForModel(
+	model: WhichLlmModel,
+	quant: string | undefined,
+	signal?: AbortSignal,
+): Promise<GgufArtifact | undefined> {
 	if (model.artifact_repo_id && model.artifact_filename) {
 		try {
 			const repository = validateRepository(model.artifact_repo_id);
@@ -316,7 +367,11 @@ async function findOllamaGgufs(
 	const recommendations: Recommendation[] = [];
 	for (const model of output.models ?? []) {
 		try {
-			const artifact = await findArtifactForModel(model, quant ?? normalizeQuant(model.quant_type ?? undefined), signal);
+			const artifact = await findArtifactForModel(
+				model,
+				quant ?? normalizeQuant(model.quant_type ?? undefined),
+				signal,
+			);
 			recommendations.push({
 				model,
 				artifact,
@@ -334,7 +389,7 @@ async function findOllamaGgufs(
 	const hardware = output.hardware?.gpus?.[0];
 	const hardwareText = hardware
 		? `${hardware.name ?? "GPU"}${hardware.usable_vram_bytes ? ` (${formatSize(hardware.usable_vram_bytes)} usable)` : ""}`
-		: output.hardware?.cpu ?? "detected hardware";
+		: (output.hardware?.cpu ?? "detected hardware");
 	const lines = [`whichllm recommendations for ${hardwareText}:`];
 	for (const [index, recommendation] of recommendations.entries()) {
 		const { model, artifact } = recommendation;
@@ -348,7 +403,9 @@ async function findOllamaGgufs(
 			.join(" · ");
 		lines.push(`${index + 1}. ${model.model_id}${runtime ? ` — ${runtime}` : ""}`);
 		if (artifact) {
-			lines.push(`   GGUF: ${artifact.repository} @ ${artifact.revision.slice(0, 12)} / ${artifact.filename} (${artifact.via})`);
+			lines.push(
+				`   GGUF: ${artifact.repository} @ ${artifact.revision.slice(0, 12)} / ${artifact.filename} (${artifact.via})`,
+			);
 			lines.push(`   Install as: ${recommendation.suggestedModelName}`);
 		} else {
 			lines.push(`   No public ${quant ?? model.quant_type ?? "matching"} GGUF was found through Hugging Face.`);
@@ -454,7 +511,9 @@ async function curlDownload(
 	url: string,
 	partPath: string,
 	signal: AbortSignal | undefined,
-	onUpdate: ((update: { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> }) => void) | undefined,
+	onUpdate:
+		| ((update: { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> }) => void)
+		| undefined,
 ): Promise<void> {
 	const download = async (resume: boolean): Promise<{ stderr: string; code: number | null }> => {
 		const args = ["--fail", "--location", "--retry", "3", "--retry-delay", "2"];
@@ -497,7 +556,9 @@ async function curlDownload(
 	};
 
 	if (signal?.aborted) throw new Error("Download cancelled.");
-	const existingBytes = await stat(partPath).then((info) => info.size).catch(() => 0);
+	const existingBytes = await stat(partPath)
+		.then((info) => info.size)
+		.catch(() => 0);
 	let outcome = await download(existingBytes > 0);
 	if (outcome.code !== 0 && existingBytes > 0 && /range|continue|resum/i.test(outcome.stderr)) {
 		await rm(partPath, { force: true });
@@ -511,7 +572,9 @@ async function installOllamaGguf(
 	pi: ExtensionAPI,
 	params: InstallOllamaGgufParams,
 	signal: AbortSignal | undefined,
-	onUpdate: ((update: { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> }) => void) | undefined,
+	onUpdate:
+		| ((update: { content: Array<{ type: "text"; text: string }>; details: Record<string, unknown> }) => void)
+		| undefined,
 	ctx: { hasUI: boolean; ui: { confirm: (title: string, message: string) => Promise<boolean> } },
 	options: { skipConfirmation?: boolean } = {},
 ): Promise<{ text: string; details: Record<string, unknown> }> {
@@ -560,9 +623,7 @@ async function installOllamaGguf(
 	await withExclusiveLock(lockPath, async () => {
 		const sourceInfo = await stat(sourcePath).catch(() => undefined);
 		const exists = Boolean(
-			sourceInfo?.isFile() &&
-			sourceInfo.size > 0 &&
-			(size === undefined || sourceInfo.size === size),
+			sourceInfo?.isFile() && sourceInfo.size > 0 && (size === undefined || sourceInfo.size === size),
 		);
 		if (!exists) {
 			if (sourceInfo?.isFile()) await rm(sourcePath, { force: true });
@@ -571,14 +632,22 @@ async function installOllamaGguf(
 			const downloaded = await stat(partPath);
 			if (downloaded.size === 0) throw new Error("Downloaded GGUF is empty.");
 			if (size !== undefined && downloaded.size !== size) {
-				throw new Error(`Downloaded GGUF size (${formatSize(downloaded.size)}) does not match Hugging Face metadata (${formatSize(size)}).`);
+				throw new Error(
+					`Downloaded GGUF size (${formatSize(downloaded.size)}) does not match Hugging Face metadata (${formatSize(size)}).`,
+				);
 			}
 			await rename(partPath, sourcePath);
 		}
 
 		await writeFile(modelfilePath, `FROM ${sourcePath}\n`, "utf8");
-		onUpdate?.({ content: [{ type: "text", text: `Importing ${modelName} into Ollama…` }], details: { stage: "importing" } });
-		const create = await pi.exec("ollama", ["create", modelName, "-f", modelfilePath], { signal, timeout: 30 * 60_000 });
+		onUpdate?.({
+			content: [{ type: "text", text: `Importing ${modelName} into Ollama…` }],
+			details: { stage: "importing" },
+		});
+		const create = await pi.exec("ollama", ["create", modelName, "-f", modelfilePath], {
+			signal,
+			timeout: 30 * 60_000,
+		});
 		if (create.code !== 0) throw new Error(errorMessage("ollama create failed", create.stdout, create.stderr));
 	});
 
@@ -670,7 +739,11 @@ class RecommendationPicker implements Component {
 			const label = `${index + 1}. ${model.model_id}${runtime ? ` — ${runtime}` : ""}`;
 			this.addWrapped(lines, `${prefix}${index === this.selected ? this.theme.fg("accent", label) : label}`, width);
 			if (index === this.selected) {
-				this.addWrapped(lines, this.theme.fg("muted", `   ${recommendation.artifact.repository} / ${recommendation.artifact.filename}`), width);
+				this.addWrapped(
+					lines,
+					this.theme.fg("muted", `   ${recommendation.artifact.repository} / ${recommendation.artifact.filename}`),
+					width,
+				);
 			}
 		}
 		if (this.recommendations.length > visibleCount) {
@@ -737,9 +810,13 @@ class ProvisioningProgress implements Component {
 			this.requestRender();
 		})
 			.then((result) => this.finish({ result }))
-			.catch((error) => this.finish(this.controller.signal.aborted
-				? { cancelled: true }
-				: { error: error instanceof Error ? error.message : String(error) }));
+			.catch((error) =>
+				this.finish(
+					this.controller.signal.aborted
+						? { cancelled: true }
+						: { error: error instanceof Error ? error.message : String(error) },
+				),
+			);
 	}
 
 	handleInput(data: string): void {
@@ -756,11 +833,19 @@ class ProvisioningProgress implements Component {
 		const artifact = recommendation.artifact;
 		const spinner = ["◐", "◓", "◑", "◒"][this.frame % 4]!;
 		const lines = [this.border(width, "╭", "╮")];
-		this.addWrapped(lines, this.theme.fg("accent", this.theme.bold(`${spinner} Provisioning ${this.modelName}`)), width);
+		this.addWrapped(
+			lines,
+			this.theme.fg("accent", this.theme.bold(`${spinner} Provisioning ${this.modelName}`)),
+			width,
+		);
 		this.addWrapped(lines, this.theme.fg("muted", recommendation.model.model_id), width);
 		this.addWrapped(lines, this.theme.fg("muted", `${artifact.repository} / ${artifact.filename}`), width);
 		lines.push(this.row("", width));
-		this.addWrapped(lines, this.cancelling ? this.theme.fg("warning", this.stage) : this.theme.fg("text", this.stage), width);
+		this.addWrapped(
+			lines,
+			this.cancelling ? this.theme.fg("warning", this.stage) : this.theme.fg("text", this.stage),
+			width,
+		);
 		if (this.downloadedBytes !== undefined) {
 			this.addWrapped(lines, this.theme.fg("muted", `Downloaded: ${formatSize(this.downloadedBytes)}`), width);
 		}
@@ -795,7 +880,11 @@ class ProvisioningProgress implements Component {
 	}
 }
 
-async function findWithProgress(pi: ExtensionAPI, ctx: ExtensionCommandContext, gpu: string | undefined): Promise<FindDetails | null> {
+async function findWithProgress(
+	pi: ExtensionAPI,
+	ctx: ExtensionCommandContext,
+	gpu: string | undefined,
+): Promise<FindDetails | null> {
 	let settled = false;
 	return ctx.ui.custom<FindDetails | null>((tui, theme, _keybindings, done) => {
 		const finish = (result: FindDetails | null) => {
@@ -819,7 +908,8 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "find_ollama_gguf",
 		label: "Find Ollama GGUF",
-		description: "Use whichllm to rank models for hardware, then find a matching public GGUF artifact on Hugging Face. Returns repository, immutable revision, filename, and a suggested Ollama model name. Output is limited to 10 recommendations.",
+		description:
+			"Use whichllm to rank models for hardware, then find a matching public GGUF artifact on Hugging Face. Returns repository, immutable revision, filename, and a suggested Ollama model name. Output is limited to 10 recommendations.",
 		promptSnippet: "Find GGUF models that can run through Ollama on specified hardware",
 		promptGuidelines: [
 			"Use find_ollama_gguf to recommend an Ollama-installable GGUF for the user's hardware before proposing a model download.",
@@ -836,7 +926,8 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 	pi.registerTool({
 		name: "install_ollama_gguf",
 		label: "Install Ollama GGUF",
-		description: "After interactive confirmation, download an exact public GGUF from Hugging Face to a staging directory and import it as a local Ollama model. The original GGUF is never placed in Ollama's managed models directory.",
+		description:
+			"After interactive confirmation, download an exact public GGUF from Hugging Face to a staging directory and import it as a local Ollama model. The original GGUF is never placed in Ollama's managed models directory.",
 		promptSnippet: "Download a chosen Hugging Face GGUF and import it into Ollama",
 		promptGuidelines: [
 			"Use install_ollama_gguf only after the user explicitly selects the GGUF and Ollama model name; it will ask for final interactive confirmation before downloading.",
@@ -850,7 +941,8 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 	});
 
 	pi.registerCommand("ollama-models", {
-		description: "Interactively choose, download, and provision an Ollama GGUF; optionally pass a GPU name, for example /ollama-models Apple M5 Max",
+		description:
+			"Interactively choose, download, and provision an Ollama GGUF; optionally pass a GPU name, for example /ollama-models Apple M5 Max",
 		handler: async (args, ctx) => {
 			const gpu = args.trim() || undefined;
 			if (!ctx.hasUI) {
@@ -869,8 +961,9 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 				return;
 			}
 
-			const selected = await ctx.ui.custom<InstallableRecommendation | null>((tui, theme, _keybindings, done) =>
-				new RecommendationPicker(theme as TuiTheme, installable, details.gpu, done, () => tui.requestRender()),
+			const selected = await ctx.ui.custom<InstallableRecommendation | null>(
+				(tui, theme, _keybindings, done) =>
+					new RecommendationPicker(theme as TuiTheme, installable, details.gpu, done, () => tui.requestRender()),
 			);
 			if (!selected) {
 				ctx.ui.notify("Ollama model selection cancelled.", "info");
@@ -899,7 +992,9 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 				[
 					`Model: ${selected.model.model_id}`,
 					`GGUF: ${artifact.repository} @ ${artifact.revision.slice(0, 12)} / ${artifact.filename}`,
-					selected.model.file_size_bytes ? `Download: ${formatSize(selected.model.file_size_bytes)}` : "Download size: checking with Hugging Face",
+					selected.model.file_size_bytes
+						? `Download: ${formatSize(selected.model.file_size_bytes)}`
+						: "Download size: checking with Hugging Face",
 					`Staging: ${DEFAULT_DOWNLOAD_DIRECTORY}`,
 					"This downloads the GGUF, imports it into Ollama, and registers it in Pi's local model catalog.",
 				].join("\n"),
@@ -909,22 +1004,24 @@ export default function ollamaModelsExtension(pi: ExtensionAPI) {
 				return;
 			}
 
-			const outcome = await ctx.ui.custom<ProvisioningOutcome>((tui, theme, _keybindings, done) =>
-				new ProvisioningProgress(
-					theme as TuiTheme,
-					selected,
-					modelName,
-					done,
-					() => tui.requestRender(),
-					(signal, onUpdate) => installOllamaGguf(
-						pi,
-						{ repository: artifact.repository, filename: artifact.filename, modelName },
-						signal,
-						onUpdate,
-						ctx,
-						{ skipConfirmation: true },
+			const outcome = await ctx.ui.custom<ProvisioningOutcome>(
+				(tui, theme, _keybindings, done) =>
+					new ProvisioningProgress(
+						theme as TuiTheme,
+						selected,
+						modelName,
+						done,
+						() => tui.requestRender(),
+						(signal, onUpdate) =>
+							installOllamaGguf(
+								pi,
+								{ repository: artifact.repository, filename: artifact.filename, modelName },
+								signal,
+								onUpdate,
+								ctx,
+								{ skipConfirmation: true },
+							),
 					),
-				),
 			);
 			if (outcome.cancelled) {
 				ctx.ui.notify("Installation cancelled.", "info");

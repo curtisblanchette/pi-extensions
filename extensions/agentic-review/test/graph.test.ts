@@ -115,16 +115,19 @@ async function run(findings: Finding[], analyses: BugAnalysis[] = [], linearFail
 }
 
 test("a non-edge bug can approve when it does not directly block merge", async () => {
-	const result = await run([finding("bug")], [
-		{
-			findingId: "finding-1",
-			impactsAcceptanceCriteria: false,
-			isEdgeCase: false,
-			directlyBlocksMerge: false,
-			mergeImpact: "non-blocking",
-			reasoning: "The bug is real but does not prevent a safe merge.",
-		},
-	]);
+	const result = await run(
+		[finding("bug")],
+		[
+			{
+				findingId: "finding-1",
+				impactsAcceptanceCriteria: false,
+				isEdgeCase: false,
+				directlyBlocksMerge: false,
+				mergeImpact: "non-blocking",
+				reasoning: "The bug is real but does not prevent a safe merge.",
+			},
+		],
+	);
 	assert.equal(result.appliedDecision?.event, "APPROVE");
 	assert.deepEqual(result.state.decision?.blockingFindingIds, []);
 	assert.equal(result.state.loggedTickets.length, 0);
@@ -135,16 +138,19 @@ test("a non-edge bug can approve when it does not directly block merge", async (
 });
 
 test("a directly merge-blocking bug requests changes", async () => {
-	const result = await run([finding("bug")], [
-		{
-			findingId: "finding-1",
-			impactsAcceptanceCriteria: true,
-			isEdgeCase: false,
-			directlyBlocksMerge: true,
-			mergeImpact: "blocking",
-			reasoning: "Invalid orders are accepted, directly failing the acceptance criteria.",
-		},
-	]);
+	const result = await run(
+		[finding("bug")],
+		[
+			{
+				findingId: "finding-1",
+				impactsAcceptanceCriteria: true,
+				isEdgeCase: false,
+				directlyBlocksMerge: true,
+				mergeImpact: "blocking",
+				reasoning: "Invalid orders are accepted, directly failing the acceptance criteria.",
+			},
+		],
+	);
 	assert.equal(result.appliedDecision?.event, "REQUEST_CHANGES");
 	assert.deepEqual(result.state.decision?.blockingFindingIds, ["finding-1"]);
 });
@@ -197,10 +203,14 @@ test("model thinking deltas are omitted from dashboard telemetry", async () => {
 	const result = await run([], [], undefined, true);
 	const modelDeltas = result.telemetry.filter((event) => event.type === "model_delta");
 	assert.ok(modelDeltas.some((event) => event.data?.kind === "text"));
-	assert.equal(modelDeltas.some((event) => event.data?.kind === "thinking"), false);
+	assert.equal(
+		modelDeltas.some((event) => event.data?.kind === "thinking"),
+		false,
+	);
 	assert.ok(
 		result.telemetry.some(
-			(event) => event.type === "stage_progress" && event.data?.kind === "thinking" && event.data?.streamPolicy === "omitted",
+			(event) =>
+				event.type === "stage_progress" && event.data?.kind === "thinking" && event.data?.streamPolicy === "omitted",
 		),
 	);
 });

@@ -38,14 +38,18 @@ test("keeps temperature for providers that accept it", () => {
 
 test("parses structured JSON wrapped in reasoning and markdown", () => {
 	assert.deepEqual(
-		parseJsonResponse<{ findings: unknown[] }>(`<think>thinking that should not be parsed</think>\n\n\`\`\`json\n{"findings":[]}\n\`\`\``),
+		parseJsonResponse<{ findings: unknown[] }>(
+			`<think>thinking that should not be parsed</think>\n\n\`\`\`json\n{"findings":[]}\n\`\`\``,
+		),
 		{ findings: [] },
 	);
 });
 
 test("repairs common JSON formatting issues before failing", () => {
 	assert.deepEqual(
-		parseJsonResponse<{ findings: Array<{ id: string }> }>(`Here is the JSON:\n{\n  // comment\n  "findings": [{ "id": "finding-1", }],\n}`),
+		parseJsonResponse<{ findings: Array<{ id: string }> }>(
+			`Here is the JSON:\n{\n  // comment\n  "findings": [{ "id": "finding-1", }],\n}`,
+		),
 		{ findings: [{ id: "finding-1" }] },
 	);
 });

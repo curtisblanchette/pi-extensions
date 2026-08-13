@@ -54,6 +54,7 @@ Guardrails:
   - `PLANNING_AGENT_NOTION_TARGET_URL`, or
   - `PLANNING_AGENT_NOTION_TARGET_ID`.
 - Every Linear/Notion write call shows a confirmation dialog before execution.
+- Linear issues use the required concise Markdown format: Goal, Context, Scope, optional Constraints, Acceptance criteria, and optional Open questions. The agent preserves source facts and does not infer missing details.
 - File writes remain blocked except `/save-plan`.
 - MCP gateway calls are allowed only for discovery and read-only tool calls (`get`/`list`/`search`/`query`/`read`/`fetch`/similar); gateway mutations and bypass paths remain blocked by the normal planning tool gate.
 

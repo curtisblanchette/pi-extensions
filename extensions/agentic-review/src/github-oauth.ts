@@ -119,11 +119,15 @@ export class GitHubOAuthManager {
 	}
 
 	async startDeviceFlow(_clientIdInput?: string): Promise<DeviceFlowStart> {
-		throw new Error("GitHub OAuth Device Flow is disabled. Run `gh auth login --scopes repo,read:org` and refresh Settings.");
+		throw new Error(
+			"GitHub OAuth Device Flow is disabled. Run `gh auth login --scopes repo,read:org` and refresh Settings.",
+		);
 	}
 
 	async pollDeviceFlow(_sessionId: string): Promise<DeviceFlowPoll> {
-		throw new Error("GitHub OAuth Device Flow is disabled. Run `gh auth login --scopes repo,read:org` and refresh Settings.");
+		throw new Error(
+			"GitHub OAuth Device Flow is disabled. Run `gh auth login --scopes repo,read:org` and refresh Settings.",
+		);
 	}
 
 	async listRepositories(): Promise<GitHubRepositoryOption[]> {
@@ -140,7 +144,10 @@ export class GitHubOAuthManager {
 					default_branch?: string;
 					permissions?: { admin?: boolean; push?: boolean; pull?: boolean };
 				}>
-			>(token, `/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=100&page=${page}`);
+			>(
+				token,
+				`/user/repos?visibility=all&affiliation=owner,collaborator,organization_member&sort=updated&per_page=100&page=${page}`,
+			);
 			repositories.push(
 				...batch.map((repo) => ({
 					fullName: repo.full_name,
@@ -157,7 +164,8 @@ export class GitHubOAuthManager {
 
 	async selectRepository(fullName: string): Promise<GitHubConnectionStatus> {
 		const normalized = fullName.trim();
-		if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalized)) throw new Error("Repository must use owner/name format");
+		if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(normalized))
+			throw new Error("Repository must use owner/name format");
 		const token = this.requireGhToken();
 		await githubFetch(token, `/repos/${normalized}`);
 		this.replaceStored({ ...this.sanitizedStored(), repository: normalized });
@@ -171,7 +179,10 @@ export class GitHubOAuthManager {
 
 	private requireGhToken(): string {
 		const token = this.getAccessToken();
-		if (!token) throw new Error("GitHub CLI authentication is required. Run `gh auth login --scopes repo,read:org` and refresh Settings.");
+		if (!token)
+			throw new Error(
+				"GitHub CLI authentication is required. Run `gh auth login --scopes repo,read:org` and refresh Settings.",
+			);
 		return token;
 	}
 
@@ -215,7 +226,10 @@ export class GitHubOAuthManager {
 
 	private persist(): void {
 		mkdirSync(dirname(this.authPath), { recursive: true, mode: 0o700 });
-		writeFileSync(this.authPath, `${JSON.stringify(this.sanitizedStored(), null, 2)}\n`, { encoding: "utf8", mode: 0o600 });
+		writeFileSync(this.authPath, `${JSON.stringify(this.sanitizedStored(), null, 2)}\n`, {
+			encoding: "utf8",
+			mode: 0o600,
+		});
 		chmodSync(this.authPath, 0o600);
 	}
 }

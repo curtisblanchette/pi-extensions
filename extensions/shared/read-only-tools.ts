@@ -12,7 +12,10 @@ export type ToolInfo = {
 };
 
 export type ExtensionAPI = {
-	registerCommand(name: string, options: { description?: string; handler: (args: string, ctx: ExtensionCommandContext) => Promise<void> | void }): void;
+	registerCommand(
+		name: string,
+		options: { description?: string; handler: (args: string, ctx: ExtensionCommandContext) => Promise<void> | void },
+	): void;
 	registerFlag?(name: string, options: { description?: string; type: "boolean"; default?: boolean }): void;
 	on?(event: string, handler: (event: any, ctx: ExtensionContext) => Promise<any> | any): void;
 	appendEntry?(customType: string, data?: unknown): void;
@@ -101,7 +104,15 @@ export const GRAPHIFY_MCP_TOOLS = [
 	"find_similar",
 ];
 
-export const READ_ONLY_TOOL_ALLOWLIST = Array.from(new Set([...BASE_READ_ONLY_TOOLS, ...VECTOR_RETRIEVAL_TOOLS, ...MCP_GATEWAY_TOOLS, ...WEB_RETRIEVAL_TOOLS, ...GRAPHIFY_MCP_TOOLS]));
+export const READ_ONLY_TOOL_ALLOWLIST = Array.from(
+	new Set([
+		...BASE_READ_ONLY_TOOLS,
+		...VECTOR_RETRIEVAL_TOOLS,
+		...MCP_GATEWAY_TOOLS,
+		...WEB_RETRIEVAL_TOOLS,
+		...GRAPHIFY_MCP_TOOLS,
+	]),
+);
 export const MUTATION_TOOLS = new Set(["edit", "write"]);
 
 const KNOWN_MCP_TOOL_PREFIXES = [
@@ -270,7 +281,10 @@ export function restoreBaselineTools(_pi: ExtensionAPI, baselineTools: string[] 
 }
 
 function isAllowedReadOnlyResearchToolInfo(tool: ToolInfo): boolean {
-	return isAllowedReadOnlyResearchTool(tool.name) || (isMcpToolInfo(tool) && isAllowedReadOnlyMcpTool(tool.name, { allowUnknownPrefix: true }));
+	return (
+		isAllowedReadOnlyResearchTool(tool.name) ||
+		(isMcpToolInfo(tool) && isAllowedReadOnlyMcpTool(tool.name, { allowUnknownPrefix: true }))
+	);
 }
 
 export function isAllowedReadOnlyResearchTool(toolName: string): boolean {
@@ -350,7 +364,10 @@ const WEB_RETRIEVAL_TOOL_PATTERNS: RegExp[] = [
 ];
 
 function normalizeToolName(toolName: string): string {
-	return toolName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+	return toolName
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "_")
+		.replace(/^_+|_+$/g, "");
 }
 
 function stringValue(value: unknown): string | undefined {
@@ -385,18 +402,22 @@ export function extractText(content: unknown): string {
 	return content
 		.map((block) => {
 			if (typeof block === "string") return block;
-			if (block && typeof block === "object" && (block as any).type === "text") return String((block as any).text ?? "");
+			if (block && typeof block === "object" && (block as any).type === "text")
+				return String((block as any).text ?? "");
 			return "";
 		})
 		.filter(Boolean)
 		.join("\n");
 }
 
-export function restoreState<T>(ctx: ExtensionContext, entryType: string, normalize: (state: Partial<T>) => T): T | undefined {
+export function restoreState<T>(
+	ctx: ExtensionContext,
+	entryType: string,
+	normalize: (state: Partial<T>) => T,
+): T | undefined {
 	const entries = ctx.sessionManager?.getEntries?.() ?? [];
-	const latest = entries
-		.filter((entry) => entry.type === "custom" && entry.customType === entryType)
-		.at(-1) as { data?: Partial<T> } | undefined;
+	const latest = entries.filter((entry) => entry.type === "custom" && entry.customType === entryType).at(-1) as
+		{ data?: Partial<T> } | undefined;
 	return latest?.data ? normalize(latest.data) : undefined;
 }
 

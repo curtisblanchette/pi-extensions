@@ -30,14 +30,14 @@ pi install git:github.com/curtisblanchette/pi-extensions
 
 ## Extensions at a glance
 
-| Extension | Commands | Best for |
-| --- | --- | --- |
-| [`commit-pr.ts`](./extensions/commit-pr.ts) | `/commit`, `/commit-pr` | Stage files, write a Conventional Commit, push a branch, and open a draft PR from one TUI. |
-| [`planning-agent/`](./extensions/planning-agent/) | `/implementation-plan`, `/planning-agent`, `/save-plan` | Run a read-only planner that produces engineering-ready implementation plans. |
-| [`technical-researcher/`](./extensions/technical-researcher/) | `/research`, `/technical-research`, `/save-research` | Run a separate read-only researcher that produces knowledgebase-ready technical research briefs. |
-| [`prs.ts`](./extensions/prs.ts) | `/prs` | Browse open PRs, inspect CI state, checkout branches, update descriptions, run review workflows, and explain failures. |
-| [`agentic-review/`](./extensions/agentic-review/) | `/agentic-review`, `/agentic-review-server`, `/agentic-review-watch`, `/agentic-review-ui`, `/agentic-review-model`, `/agentic-review-config` | Run and observe asynchronous LangGraph PR reviews with deterministic quality gates, configurable models, and Linear edge-case deferrals. |
-| [`sync-pr-labels.ts`](./extensions/sync-pr-labels.ts) | `/sync-pr-labels` | Normalize a repository's PR workflow labels to the approved label set. |
+| Extension                                                     | Commands                                                                                                                                      | Best for                                                                                                                                 |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| [`commit-pr.ts`](./extensions/commit-pr.ts)                   | `/commit`, `/commit-pr`                                                                                                                       | Stage files, write a Conventional Commit, push a branch, and open a draft PR from one TUI.                                               |
+| [`planning-agent/`](./extensions/planning-agent/)             | `/implementation-plan`, `/planning-agent`, `/save-plan`                                                                                       | Run a read-only planner that produces engineering-ready implementation plans.                                                            |
+| [`technical-researcher/`](./extensions/technical-researcher/) | `/research`, `/technical-research`, `/save-research`                                                                                          | Run a separate read-only researcher that produces knowledgebase-ready technical research briefs.                                         |
+| [`prs.ts`](./extensions/prs.ts)                               | `/prs`                                                                                                                                        | Browse open PRs, inspect CI state, checkout branches, update descriptions, run review workflows, and explain failures.                   |
+| [`agentic-review/`](./extensions/agentic-review/)             | `/agentic-review`, `/agentic-review-server`, `/agentic-review-watch`, `/agentic-review-ui`, `/agentic-review-model`, `/agentic-review-config` | Run and observe asynchronous LangGraph PR reviews with deterministic quality gates, configurable models, and Linear edge-case deferrals. |
+| [`sync-pr-labels.ts`](./extensions/sync-pr-labels.ts)         | `/sync-pr-labels`                                                                                                                             | Normalize a repository's PR workflow labels to the approved label set.                                                                   |
 
 ## Install
 
@@ -168,15 +168,15 @@ A label normalization command for the PR workflow labels used by these extension
 
 **Approved workflow labels**
 
-| Label | Meaning |
-| --- | --- |
+| Label                    | Meaning                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------- |
 | `‼️ Merge with comments` | PR is approved, but contains comments that must be addressed before merging. |
-| `✅ Ready to merge` | PR is approved and ready for the author to merge. |
-| `👀 Ready for review` | PR is ready for review. |
-| `😭 Changes requested` | PR has been reviewed and updates are required. |
-| `🚫 Do not merge` | PR must not be merged, even if approved. |
-| `🛠️ Work in progress` | PR is under construction. |
-| `🧱 Blocked` | PR cannot be finalized until blocking work is completed. |
+| `✅ Ready to merge`      | PR is approved and ready for the author to merge.                            |
+| `👀 Ready for review`    | PR is ready for review.                                                      |
+| `😭 Changes requested`   | PR has been reviewed and updates are required.                               |
+| `🚫 Do not merge`        | PR must not be merged, even if approved.                                     |
+| `🛠️ Work in progress`    | PR is under construction.                                                    |
+| `🧱 Blocked`             | PR cannot be finalized until blocking work is completed.                     |
 
 **Use cases**
 
@@ -194,16 +194,19 @@ A label normalization command for the PR workflow labels used by these extension
 ## Development
 
 ```bash
-npm install
-npm run check
+corepack enable
+pnpm install
+pnpm check
+pnpm test
+pnpm format:check
 ```
 
 This package declares pi resources in `package.json`:
 
 ```json
 {
-  "pi": {
-    "extensions": ["./extensions"]
-  }
+	"pi": {
+		"extensions": ["./extensions"]
+	}
 }
 ```

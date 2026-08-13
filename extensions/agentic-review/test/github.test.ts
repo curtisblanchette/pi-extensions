@@ -50,13 +50,17 @@ test("previous agentic review with unresolved review threads blocks another revi
 				isResolved: false,
 				path: "src/file.ts",
 				line: 42,
-				comments: { nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r1" }] },
+				comments: {
+					nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r1" }],
+				},
 			},
 			{
 				isResolved: true,
 				path: "src/ok.ts",
 				line: 7,
-				comments: { nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r2" }] },
+				comments: {
+					nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r2" }],
+				},
 			},
 		],
 	);
@@ -86,7 +90,9 @@ test("previous agentic review with all review threads resolved does not block", 
 				isResolved: true,
 				path: "src/file.ts",
 				line: 42,
-				comments: { nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r1" }] },
+				comments: {
+					nodes: [{ author: { login: "reviewer" }, url: "https://github.com/example/repo/pull/1#discussion_r1" }],
+				},
 			},
 		],
 	);
@@ -107,7 +113,10 @@ test("PRs without a previous agentic review do not query review threads", async 
 	);
 
 	assert.equal(await client.getPreviousAgenticReviewBlocker(1), undefined);
-	assert.equal(calls.some((args) => args.includes("graphql")), false);
+	assert.equal(
+		calls.some((args) => args.includes("graphql")),
+		false,
+	);
 });
 
 test("review guidance is read from the PR head and includes AGENTS references", async () => {
@@ -152,13 +161,21 @@ test("empty author allowlist allows all authors without GitHub lookups", async (
 		repo,
 	);
 
-	assert.deepEqual(await client.checkAuthorAllowlist("alice", { users: [], organizations: [], teams: [] }), { allowed: true });
+	assert.deepEqual(await client.checkAuthorAllowlist("alice", { users: [], organizations: [], teams: [] }), {
+		allowed: true,
+	});
 	assert.equal(calls, 0);
 });
 
 test("author allowlist accepts explicit users case-insensitively", async () => {
-	const client = new GitHubClient({ exec: async () => ({ code: 1, stdout: "", stderr: "unexpected" }) } as any, "/tmp", repo);
-	assert.deepEqual(await client.checkAuthorAllowlist("Alice", { users: ["alice"], organizations: [], teams: [] }), { allowed: true });
+	const client = new GitHubClient(
+		{ exec: async () => ({ code: 1, stdout: "", stderr: "unexpected" }) } as any,
+		"/tmp",
+		repo,
+	);
+	assert.deepEqual(await client.checkAuthorAllowlist("Alice", { users: ["alice"], organizations: [], teams: [] }), {
+		allowed: true,
+	});
 });
 
 test("author allowlist accepts organization members", async () => {
@@ -174,9 +191,12 @@ test("author allowlist accepts organization members", async () => {
 		repo,
 	);
 
-	assert.deepEqual(await client.checkAuthorAllowlist("alice", { users: [], organizations: ["metalabdesign"], teams: [] }), {
-		allowed: true,
-	});
+	assert.deepEqual(
+		await client.checkAuthorAllowlist("alice", { users: [], organizations: ["metalabdesign"], teams: [] }),
+		{
+			allowed: true,
+		},
+	);
 });
 
 test("author allowlist accepts team members and rejects non-members", async () => {

@@ -4,7 +4,12 @@ import type { Finding, PrContext } from "./types.ts";
 
 export { AGENTIC_REVIEW_SYSTEM_PROMPT };
 
-export function buildReviewUserPrompt(pr: PrContext, diffChunk: string, chunkIndex: number, totalChunks: number): string {
+export function buildReviewUserPrompt(
+	pr: PrContext,
+	diffChunk: string,
+	chunkIndex: number,
+	totalChunks: number,
+): string {
 	return [
 		`Agentic review PR #${pr.number}: ${pr.title}`,
 		"",
@@ -24,7 +29,8 @@ export function buildReviewUserPrompt(pr: PrContext, diffChunk: string, chunkInd
 		formatExistingComments(pr.existingComments),
 		"",
 		"Changed files:",
-		pr.changedFiles.map((file) => `- ${file.path} (+${file.additions ?? 0}/-${file.deletions ?? 0})`).join("\n") || "(none)",
+		pr.changedFiles.map((file) => `- ${file.path} (+${file.additions ?? 0}/-${file.deletions ?? 0})`).join("\n") ||
+			"(none)",
 		"",
 		"Applicable repository guidance fetched from the PR head:",
 		pr.reviewGuidance?.length
@@ -77,7 +83,7 @@ export function buildQualityGatePrompt(pr: PrContext, reviewText: string): strin
 			2,
 		),
 		"",
-		"If the review found no actionable issues, return {\"findings\":[]}.",
+		'If the review found no actionable issues, return {"findings":[]}.',
 		"",
 		"Review to classify:",
 		reviewText,

@@ -1,0 +1,10 @@
+packages:
+  - extensions/rag
+
+# Pnpm 11 requires an explicit allowlist for dependency lifecycle scripts.
+allowBuilds:
+  "@google/genai": true
+  better-sqlite3: true
+  esbuild: true
+  koffi: true
+  protobufjs: true

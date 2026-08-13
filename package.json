@@ -1,44 +1,48 @@
 {
-  "name": "@curtisblanchette/pi-extensions",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Curtis Blanchette's pi extensions packaged for pi install.",
-  "keywords": [
-    "pi-package",
-    "pi-extension",
-    "pi"
-  ],
-  "scripts": {
-    "check": "tsc --noEmit",
-    "test": "find extensions -path '*/node_modules' -prune -o -name '*.test.ts' -print0 | xargs -0 node --import tsx --test",
-    "test:agentic-review": "node --import tsx --test extensions/agentic-review/test/*.test.ts"
-  },
-  "pi": {
-    "extensions": [
-      "./extensions"
-    ]
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-ai": "^0.74.0",
-    "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@earendil-works/pi-tui": "^0.74.0"
-  },
-  "devDependencies": {
-    "@earendil-works/pi-ai": "^0.74.0",
-    "@earendil-works/pi-coding-agent": "^0.74.0",
-    "@earendil-works/pi-tui": "^0.74.0",
-    "@types/node": "^24.0.0",
-    "typescript": "^5.9.0"
-  },
-  "dependencies": {
-    "@langchain/core": "^1.2.2",
-    "@langchain/langgraph": "^1.4.7",
-    "@modelcontextprotocol/sdk": "^1.30.0",
-    "better-sqlite3": "^11.10.0",
-    "mammoth": "^1.12.1",
-    "pdf-parse": "^1.1.4",
-    "tsx": "^4.23.1",
-    "zod": "^3.25.76"
-  }
+	"name": "@curtisblanchette/pi-extensions",
+	"version": "0.1.0",
+	"private": true,
+	"packageManager": "pnpm@11.5.1",
+	"type": "module",
+	"description": "Curtis Blanchette's pi extensions packaged for pi install.",
+	"keywords": [
+		"pi-package",
+		"pi-extension",
+		"pi"
+	],
+	"scripts": {
+		"check": "tsc --noEmit",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"test": "find extensions -path '*/node_modules' -prune -o -name '*.test.ts' -print0 | xargs -0 node --import tsx --test",
+		"test:agentic-review": "node --import tsx --test extensions/agentic-review/test/*.test.ts"
+	},
+	"pi": {
+		"extensions": [
+			"./extensions"
+		]
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-ai": "^0.74.0",
+		"@earendil-works/pi-coding-agent": "^0.74.0",
+		"@earendil-works/pi-tui": "^0.74.0"
+	},
+	"devDependencies": {
+		"@earendil-works/pi-ai": "^0.74.0",
+		"@earendil-works/pi-coding-agent": "^0.74.0",
+		"@earendil-works/pi-tui": "^0.74.0",
+		"@types/node": "^24.0.0",
+		"prettier": "^3.9.6",
+		"typescript": "^5.9.0"
+	},
+	"dependencies": {
+		"@langchain/core": "^1.2.2",
+		"@langchain/langgraph": "^1.4.7",
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"better-sqlite3": "^11.10.0",
+		"mammoth": "^1.12.1",
+		"pdf-parse": "^1.1.4",
+		"tsx": "^4.23.1",
+		"zod": "^3.25.76"
+	}
 }

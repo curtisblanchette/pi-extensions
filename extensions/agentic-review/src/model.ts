@@ -156,7 +156,10 @@ export async function resolveReviewModel(
 				return parseJsonResponse<T>(text);
 			} catch (error) {
 				if (!(error instanceof InvalidJsonResponseError)) throw error;
-				onDelta?.({ kind: "text", delta: "\n\n[structured-output repair: invalid JSON received; retrying JSON-only repair]\n" });
+				onDelta?.({
+					kind: "text",
+					delta: "\n\n[structured-output repair: invalid JSON received; retrying JSON-only repair]\n",
+				});
 				const repaired = await completeText(
 					STRUCTURED_OUTPUT_REPAIR_SYSTEM_PROMPT,
 					buildJsonRepairPrompt(userText, text, error),
@@ -180,8 +183,13 @@ export function supportsTemperature(model: Model<any>): boolean {
 	return model.api !== "openai-codex-responses" && model.provider !== "openai-codex";
 }
 
-function configuredLocalFallbackProvider(pi: ExtensionAPI, ctx: ExtensionContext, config: AgenticReviewConfig): string | undefined {
-	if (!config.model.provider || !config.model.id || ctx.modelRegistry.find(config.model.provider, config.model.id)) return undefined;
+function configuredLocalFallbackProvider(
+	pi: ExtensionAPI,
+	ctx: ExtensionContext,
+	config: AgenticReviewConfig,
+): string | undefined {
+	if (!config.model.provider || !config.model.id || ctx.modelRegistry.find(config.model.provider, config.model.id))
+		return undefined;
 	if (config.model.provider === "ollama") {
 		ensureOllamaProvider(pi, config);
 		return AGENTIC_REVIEW_OLLAMA_PROVIDER;
@@ -253,7 +261,11 @@ export function parseJsonResponse<T>(text: string): T {
 	throw new InvalidJsonResponseError(normalized, candidates, [...new Set(parseErrors)].slice(-8));
 }
 
-function buildJsonRepairPrompt(originalRequest: string, invalidOutput: string, error: InvalidJsonResponseError): string {
+function buildJsonRepairPrompt(
+	originalRequest: string,
+	invalidOutput: string,
+	error: InvalidJsonResponseError,
+): string {
 	return [
 		"The previous response did not parse as JSON for this structured-output request.",
 		"Return one valid JSON value that satisfies the requested shape. No markdown. No prose.",
@@ -410,7 +422,9 @@ function formatInvalidJsonMessage(raw: string, parseErrors: string[]): string {
 
 function snippet(value: string, max: number): string {
 	const normalized = value.replace(/\s+$/g, "");
-	return normalized.length <= max ? normalized : `${normalized.slice(0, max)}… [truncated ${normalized.length - max} chars]`;
+	return normalized.length <= max
+		? normalized
+		: `${normalized.slice(0, max)}… [truncated ${normalized.length - max} chars]`;
 }
 
 function registerLocalOpenAiProvider(

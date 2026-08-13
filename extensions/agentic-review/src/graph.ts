@@ -92,7 +92,8 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 		});
 		const context = await deps.github.gatherContext(state.prNumber);
 		const getReviewGuidance = (deps.github as Partial<GitHubClient>).getReviewGuidance;
-		if (getReviewGuidance) context.reviewGuidance = await getReviewGuidance.call(deps.github, context.changedFiles, context.headSha);
+		if (getReviewGuidance)
+			context.reviewGuidance = await getReviewGuidance.call(deps.github, context.changedFiles, context.headSha);
 		for (const key of extractLinearIssueKeys(context.headRefName, context.title, context.body)) {
 			const issue = await deps.linear.lookupIssue(key);
 			if (!issue) continue;
@@ -123,13 +124,17 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 	const review = async (state: AgenticReviewGraphState) => {
 		const context = requireContext(state);
 		const chunks = chunkUnifiedDiff(context.diff, deps.config.review.maxDiffCharsPerChunk);
-		stageStarted("review", `Starting agentic review across ${chunks.length} diff chunk${chunks.length === 1 ? "" : "s"}`, {
-			chunks: chunks.length,
-			model: `${deps.model.provider}/${deps.model.id}`,
-			diffCharacters: context.diff.length,
-			files: context.changedFiles.map((file) => file.path),
-			existingComments: context.existingComments.length,
-		});
+		stageStarted(
+			"review",
+			`Starting agentic review across ${chunks.length} diff chunk${chunks.length === 1 ? "" : "s"}`,
+			{
+				chunks: chunks.length,
+				model: `${deps.model.provider}/${deps.model.id}`,
+				diffCharacters: context.diff.length,
+				files: context.changedFiles.map((file) => file.path),
+				existingComments: context.existingComments.length,
+			},
+		);
 		if (chunks.length > deps.config.review.maxChunks) {
 			throw new Error(
 				`PR diff requires ${chunks.length} review chunks, exceeding review.maxChunks=${deps.config.review.maxChunks}. Increase the limit rather than approving an incomplete review.`,
@@ -139,7 +144,11 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 		for (let index = 0; index < chunks.length; index++) {
 			const message = `Reviewing PR #${context.number} diff chunk ${index + 1}/${chunks.length} with ${deps.model.provider}/${deps.model.id}`;
 			deps.onProgress?.(message);
-			stageProgress("review", message, { chunk: index + 1, totalChunks: chunks.length, characters: chunks[index].length });
+			stageProgress("review", message, {
+				chunk: index + 1,
+				totalChunks: chunks.length,
+				characters: chunks[index].length,
+			});
 			const onDelta = streamModelDelta("review", `review chunk ${index + 1}/${chunks.length}`);
 			responses.push(
 				await deps.model
@@ -172,7 +181,12 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 		});
 		const onDelta = streamModelDelta("classify", "quality gate");
 		const raw = await deps.model
-			.completeJson<{ findings?: unknown[] }>(QUALITY_GATE_SYSTEM_PROMPT, buildQualityGatePrompt(context, state.reviewText), deps.signal, onDelta)
+			.completeJson<{ findings?: unknown[] }>(
+				QUALITY_GATE_SYSTEM_PROMPT,
+				buildQualityGatePrompt(context, state.reviewText),
+				deps.signal,
+				onDelta,
+			)
 			.finally(() => onDelta.flush());
 		const findings = validateFindings(raw.findings ?? []);
 		const severityCounts = Object.fromEntries(
@@ -212,10 +226,17 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 		});
 		const onDelta = streamModelDelta("analyze-bugs", "bug analysis");
 		const raw = await deps.model
-			.completeJson<{ analyses?: unknown[] }>(BUG_ANALYSIS_SYSTEM_PROMPT, buildBugAnalysisPrompt(context, bugs), deps.signal, onDelta)
+			.completeJson<{ analyses?: unknown[] }>(
+				BUG_ANALYSIS_SYSTEM_PROMPT,
+				buildBugAnalysisPrompt(context, bugs),
+				deps.signal,
+				onDelta,
+			)
 			.finally(() => onDelta.flush());
 		const analyses = validateBugAnalyses(raw.analyses ?? [], bugs);
-		const followUpIds = new Set(analyses.filter((analysis) => analysis.mergeImpact === "follow-up").map((analysis) => analysis.findingId));
+		const followUpIds = new Set(
+			analyses.filter((analysis) => analysis.mergeImpact === "follow-up").map((analysis) => analysis.findingId),
+		);
 		stageCompleted("analyze-bugs", `Analyzed ${bugs.length} bug${bugs.length === 1 ? "" : "s"}`, {
 			blocking: analyses.filter((analysis) => analysis.mergeImpact === "blocking").length,
 			nonBlocking: analyses.filter((analysis) => analysis.mergeImpact === "non-blocking").length,
@@ -240,11 +261,15 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 
 	const logDeferrals = async (state: AgenticReviewGraphState) => {
 		const context = requireContext(state);
-		stageStarted("log-deferrals", `Preparing ${state.deferrals.length} Linear follow-up${state.deferrals.length === 1 ? "" : "s"}`, {
-			deferrals: state.deferrals,
-			linearAvailable: deps.linear.available,
-			dryRun: deps.config.dryRun,
-		});
+		stageStarted(
+			"log-deferrals",
+			`Preparing ${state.deferrals.length} Linear follow-up${state.deferrals.length === 1 ? "" : "s"}`,
+			{
+				deferrals: state.deferrals,
+				linearAvailable: deps.linear.available,
+				dryRun: deps.config.dryRun,
+			},
+		);
 		if (state.deferrals.length && !deps.config.dryRun) {
 			const latest = await deps.github.getPullRequest(context.number);
 			if (latest.headSha !== context.headSha) {
@@ -339,17 +364,21 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 	const apply = async (state: AgenticReviewGraphState) => {
 		const context = requireContext(state);
 		if (!state.decision) throw new Error("Quality gate did not produce a decision");
-		stageStarted("apply", deps.config.dryRun ? "Simulating GitHub review submission" : "Submitting GitHub review and inline comments", {
-			event: state.decision.event,
-			dryRun: deps.config.dryRun,
-			findings: state.findings.map((finding) => ({
-				id: finding.id,
-				severity: finding.severity,
-				path: finding.path,
-				line: finding.line,
-				hasInlineSuggestion: Boolean(finding.suggestion),
-			})),
-		});
+		stageStarted(
+			"apply",
+			deps.config.dryRun ? "Simulating GitHub review submission" : "Submitting GitHub review and inline comments",
+			{
+				event: state.decision.event,
+				dryRun: deps.config.dryRun,
+				findings: state.findings.map((finding) => ({
+					id: finding.id,
+					severity: finding.severity,
+					path: finding.path,
+					line: finding.line,
+					hasInlineSuggestion: Boolean(finding.suggestion),
+				})),
+			},
+		);
 		if (!deps.config.dryRun) {
 			const latest = await deps.github.getPullRequest(context.number);
 			if (latest.headSha !== context.headSha) {
@@ -358,7 +387,9 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 				);
 			}
 		}
-		const comments = state.findings.map(toInlineCandidate).filter((candidate): candidate is InlineCandidate => Boolean(candidate));
+		const comments = state.findings
+			.map(toInlineCandidate)
+			.filter((candidate): candidate is InlineCandidate => Boolean(candidate));
 		const applied = await deps.github.applyReview(context, state.decision, comments, deps.config);
 		stageCompleted("apply", applied.dryRun ? "Dry-run GitHub application completed" : "GitHub review submitted", {
 			event: state.decision.event,
@@ -389,10 +420,14 @@ export function createAgenticReviewGraph(deps: GraphDependencies) {
 		.addEdge(START, "gather")
 		.addEdge("gather", "review")
 		.addEdge("review", "classify")
-		.addConditionalEdges("classify", (state) => (state.findings.some((finding) => finding.severity === "bug") ? "bugs" : "clean"), {
-			bugs: "analyzeBugs",
-			clean: "gate",
-		})
+		.addConditionalEdges(
+			"classify",
+			(state) => (state.findings.some((finding) => finding.severity === "bug") ? "bugs" : "clean"),
+			{
+				bugs: "analyzeBugs",
+				clean: "gate",
+			},
+		)
 		.addEdge("analyzeBugs", "logDeferrals")
 		.addEdge("logDeferrals", "gate")
 		.addEdge("gate", "apply")
@@ -522,7 +557,9 @@ function validateBugAnalyses(values: unknown[], bugs: Finding[]): BugAnalysis[] 
 			findingId,
 			impactsAcceptanceCriteria,
 			isEdgeCase,
-			edgeCaseDefinition: isEdgeCase ? stringValue(value.edgeCaseDefinition) || "Edge condition not adequately defined" : undefined,
+			edgeCaseDefinition: isEdgeCase
+				? stringValue(value.edgeCaseDefinition) || "Edge condition not adequately defined"
+				: undefined,
 			directlyBlocksMerge: directlyBlocksMerge || mergeImpact === "blocking",
 			mergeImpact,
 			disposition: mergeImpact === "blocking" ? "critical" : "deferred",
@@ -556,8 +593,13 @@ function buildDecision(state: AgenticReviewGraphState, blockingFindingIds: strin
 	}
 	if (state.findings.length || tickets.length || ticketFailures.length) {
 		const nonBlockingReasons = state.findings.map((finding) => {
-			const analysis = finding.severity === "bug" ? state.bugAnalyses.find((candidate) => candidate.findingId === finding.id) : undefined;
-			return analysis ? `${finding.severity} (${analysis.mergeImpact}): ${finding.title}` : `${finding.severity}: ${finding.title}`;
+			const analysis =
+				finding.severity === "bug"
+					? state.bugAnalyses.find((candidate) => candidate.findingId === finding.id)
+					: undefined;
+			return analysis
+				? `${finding.severity} (${analysis.mergeImpact}): ${finding.title}`
+				: `${finding.severity}: ${finding.title}`;
 		});
 		return {
 			event: "APPROVE",
@@ -570,7 +612,11 @@ function buildDecision(state: AgenticReviewGraphState, blockingFindingIds: strin
 		event: "APPROVE",
 		blockingFindingIds: [],
 		reasons: [],
-		summary: ["Automated agentic review found no actionable issues. Ready to merge.", "", "_Generated by the pi LangGraph agentic-review workflow._"].join("\n"),
+		summary: [
+			"Automated agentic review found no actionable issues. Ready to merge.",
+			"",
+			"_Generated by the pi LangGraph agentic-review workflow._",
+		].join("\n"),
 	};
 }
 
@@ -587,7 +633,10 @@ function formatReviewSummary(
 		...reasons.map((reason) => `- ${reason}`),
 		tickets.length ? "" : undefined,
 		tickets.length ? "### Tracked follow-ups" : undefined,
-		...tickets.map((ticket) => `- ${ticket.url ? `[${ticket.identifier ?? ticket.title}](${ticket.url})` : ticket.identifier ?? ticket.title}`),
+		...tickets.map(
+			(ticket) =>
+				`- ${ticket.url ? `[${ticket.identifier ?? ticket.title}](${ticket.url})` : (ticket.identifier ?? ticket.title)}`,
+		),
 		ticketFailures.length ? "" : undefined,
 		ticketFailures.length ? "### Follow-up tracking failures" : undefined,
 		...ticketFailures.map((ticket) => `- ${ticket.title}: ${ticket.error}`),
@@ -603,7 +652,15 @@ function toInlineCandidate(finding: Finding): InlineCandidate | undefined {
 	return {
 		path: finding.path,
 		line: finding.line,
-		body: [`**${finding.severity} — ${finding.title}**`, "", finding.rationale, "", "```suggestion", finding.suggestion, "```"].join("\n"),
+		body: [
+			`**${finding.severity} — ${finding.title}**`,
+			"",
+			finding.rationale,
+			"",
+			"```suggestion",
+			finding.suggestion,
+			"```",
+		].join("\n"),
 	};
 }
 
@@ -618,7 +675,8 @@ function chunkUnifiedDiff(diff: string, maxChars: number): string[] {
 				chunks.push(current);
 				current = "";
 			}
-			for (let offset = 0; offset < section.length; offset += maxChars) chunks.push(section.slice(offset, offset + maxChars));
+			for (let offset = 0; offset < section.length; offset += maxChars)
+				chunks.push(section.slice(offset, offset + maxChars));
 			continue;
 		}
 		const next = current ? `${current}\n${section}` : section;
