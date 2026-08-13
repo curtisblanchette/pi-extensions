@@ -838,7 +838,7 @@ export default function prsExtension(pi: ExtensionAPI) {
 		const repo = await getActiveRepo(pi, ctx.cwd);
 		const assistantText = extractAssistantText(event.messages as unknown[]);
 		const suggestions = parseInlineCommentCandidatesFromReview(assistantText);
-		const postedSuggestions: InlineCommentSuggestion[] = [];
+		const selectedSuggestions: InlineCommentSuggestion[] = [];
 		if (suggestions.length > 0) {
 			const approved = await ctx.ui.custom<InlineCommentSuggestion[] | null>((tui, theme, _kb, done) => {
 				return new InlineCommentApprovalComponent(tui, theme, prNumber, suggestions, done);
@@ -849,19 +849,14 @@ export default function prsExtension(pi: ExtensionAPI) {
 			}
 			if (approved.length > 0) {
 				const confirmed = await ctx.ui.confirm(
-					`Post ${approved.length} selected inline review comment${approved.length === 1 ? "" : "s"}?`,
-					`Post the selected review comments and their offending-line suggestions to PR #${prNumber}?`,
+					`Include ${approved.length} inline review comment${approved.length === 1 ? "" : "s"}?`,
+					`Submit the selected comments and the final review event together as one review on PR #${prNumber}?`,
 				);
 				if (!confirmed) {
-					ctx.ui.notify("Inline comment posting cancelled", "info");
+					ctx.ui.notify("Inline comment selection cancelled", "info");
 					return;
 				}
-				const posted = await postInlineReviewComments(pi, ctx as ExtensionCommandContext, repo, prNumber, approved);
-				postedSuggestions.push(...posted);
-				ctx.ui.notify(
-					`Posted ${posted.length} inline PR comment${posted.length === 1 ? "" : "s"} to #${prNumber}`,
-					"info",
-				);
+				selectedSuggestions.push(...approved);
 			} else {
 				ctx.ui.notify("No inline comments selected", "info");
 			}
@@ -869,7 +864,7 @@ export default function prsExtension(pi: ExtensionAPI) {
 			ctx.ui.notify(`No new inline comment candidates found for PR #${prNumber}`, "info");
 		}
 
-		await finalizeReviewWorkflow(pi, ctx as ExtensionCommandContext, repo, prNumber, postedSuggestions);
+		await finalizeReviewWorkflow(pi, ctx as ExtensionCommandContext, repo, prNumber, selectedSuggestions);
 	});
 
 	pi.registerCommand("prs", {
@@ -1431,24 +1426,65 @@ async function submitPullRequestReview(
 		}
 		body = edited;
 	}
-	await ghApi(
+	const prOutput = await ghApi(
 		pi,
 		ctx.cwd,
 		repo,
-		[
-			"--method",
-			"POST",
-			`repos/${repo.owner}/${repo.name}/pulls/${prNumber}/reviews`,
-			"-H",
-			"Accept: application/vnd.github+json",
-			"-f",
-			`event=${event}`,
-			"-f",
-			`body=${body}`,
-		],
-		`Failed to submit ${choice} review for PR #${prNumber}`,
+		[`repos/${repo.owner}/${repo.name}/pulls/${prNumber}`],
+		`Failed to load PR #${prNumber}`,
 	);
-	ctx.ui.notify(`Submitted ${choice} review for PR #${prNumber}`, "info");
+	const pr = JSON.parse(prOutput) as RestPullRequest;
+	const commitId = pr.head?.sha;
+	if (!commitId) throw new Error(`Could not resolve head SHA for PR #${prNumber}`);
+
+	const tempDir = await mkdtemp(join(tmpdir(), "pi-pr-review-"));
+	try {
+		const payloadFile = join(tempDir, "review.json");
+		await writeFile(
+			payloadFile,
+			JSON.stringify(
+				{
+					commit_id: commitId,
+					event,
+					body,
+					...(comments.length > 0
+						? {
+								comments: comments.map((comment) => ({
+									path: comment.path,
+									line: comment.line,
+									side: "RIGHT",
+									body: comment.body,
+								})),
+							}
+						: {}),
+				},
+				null,
+				2,
+			),
+			"utf8",
+		);
+		await ghApi(
+			pi,
+			ctx.cwd,
+			repo,
+			[
+				"--method",
+				"POST",
+				`repos/${repo.owner}/${repo.name}/pulls/${prNumber}/reviews`,
+				"-H",
+				"Accept: application/vnd.github+json",
+				"--input",
+				payloadFile,
+			],
+			`Failed to submit ${choice} review for PR #${prNumber}`,
+		);
+	} finally {
+		await rm(tempDir, { recursive: true, force: true });
+	}
+	ctx.ui.notify(
+		`Submitted ${choice} review for PR #${prNumber}${comments.length > 0 ? ` with ${comments.length} inline comment${comments.length === 1 ? "" : "s"}` : ""}`,
+		"info",
+	);
 	return true;
 }
 
@@ -1462,11 +1498,7 @@ function buildApprovalReviewBody(comments: InlineCommentSuggestion[]): string {
 	return [
 		`I found ${summary} and left the details inline. I'm treating ${pronoun} as non-blocking, so I'm approving with comments.`,
 		"",
-		"Posted inline comments:",
-		...comments.map((comment) => {
-			const location = `${comment.path}:${comment.line}`;
-			return comment.url ? `- [${location}](${comment.url})` : `- \`${location}\``;
-		}),
+		"See the inline comments for the affected lines.",
 	].join("\n");
 }
 
